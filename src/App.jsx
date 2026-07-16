@@ -10,6 +10,7 @@ import PastOrders from './pages/PastOrders';
 import Orders from './pages/Orders';
 import AdminLogin from './pages/AdminLogin';
 import AdminPanel from './pages/AdminPanel';
+import AdminSetup from './pages/AdminSetup';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/order/:orderId" element={<Orders />} />
           <Route path="/past-orders/:customerId" element={<PastOrders />} />
           <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/setup" element={<AdminSetup />} />
           <Route path="/admin/dashboard" element={<AdminPanel />} />
         </Routes>
       </AuthProvider>

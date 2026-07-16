@@ -35,9 +35,6 @@ export default function Home() {
             Set up in minutes, grow your business today.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link to="/signup" className="btn-primary text-lg px-8 py-3">
-              Start Free Trial
-            </Link>
             <Link to="/login" className="btn-secondary text-lg px-8 py-3">
               Restaurant Login
             </Link>
