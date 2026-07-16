@@ -7,6 +7,7 @@ export default function AdminPanel() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
   const adminToken = localStorage.getItem('adminToken');
@@ -91,6 +92,10 @@ export default function AdminPanel() {
   };
 
   const filtered = restaurants.filter(r => {
+    const matchesSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.email.toLowerCase().includes(search.toLowerCase()) ||
+      (r.ownerPhone || r.phone || '').includes(search);
+    if (!matchesSearch) return false;
     if (filter === 'pending') return r.subscriptionStatus === 'pending';
     if (filter === 'active') return r.isApproved && r.isActive && r.subscriptionStatus === 'active';
     if (filter === 'expiring') { const d = getDaysLeft(r.subscriptionExpiry); return d !== null && d <= 7 && d > 0; }
@@ -159,6 +164,17 @@ export default function AdminPanel() {
               {tab.label}
             </button>
           ))}
+        </div>
+
+        {/* Search */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="🔍 Search by restaurant name, email or phone..."
+            className="w-full bg-gray-800 border border-gray-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 placeholder-gray-400"
+          />
         </div>
 
         {/* Restaurant List */}

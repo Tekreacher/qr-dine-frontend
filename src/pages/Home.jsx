@@ -13,11 +13,11 @@ export default function Home() {
               <span className="ml-2 text-xl font-bold text-gray-900">QR Dine</span>
             </div>
             <div className="flex gap-4">
-              <Link to="/login" className="text-gray-700 hover:text-blue-600 px-3 py-2">
-                Login
+              <Link to="/login" className="text-gray-700 hover:text-blue-600 px-3 py-2 font-medium">
+                Restaurant Login
               </Link>
               <Link to="/signup" className="btn-primary">
-                Get Started
+                Register Restaurant
               </Link>
             </div>
           </div>

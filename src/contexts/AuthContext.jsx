@@ -47,31 +47,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (name, email, password, phone, address) => {
-    try {
-      const response = await api.post('/auth/register', {
-        name,
-        email,
-        password,
-        phone,
-        address
-      });
-      
-      const { token, restaurant } = response.data;
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(restaurant));
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      setUser(restaurant);
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Signup failed' 
-      };
-    }
-  };
+  // signup is handled directly in Signup.jsx — no token returned until admin approves
 
   const logout = () => {
     localStorage.removeItem('token');
