@@ -28,8 +28,10 @@ export default function OrderStatus() {
   useEffect(() => {
     if (order && order.orderStatus === 'completed' && !showThankYou) {
       // Move to history on the server and mark as existing customer
-      if (customerId) {
-        api.post(`/customer/${customerId}/complete-order`).catch(console.error);
+      // Always pass orderId in body as primary source — don't rely on currentOrderId in DB
+      // This fixes the first order not appearing in past orders bug
+      if (customerId && customerId !== 'null') {
+        api.post(`/customer/${customerId}/complete-order`, { orderId }).catch(console.error);
       }
       // Clear current order from localStorage
       if (uniqueCode) {
