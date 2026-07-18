@@ -10,9 +10,26 @@ const api = axios.create({
 // Add token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Super-admin routes (/admin/login, /admin/restaurants, /admin/setup, etc.)
+    // use adminToken. Note: /admin/orders is a RESTAURANT route (dashboard analytics)
+    // so it must use the restaurant token, not adminToken.
+    const url = config.url || '';
+    const isSuperAdminRoute =
+      url.includes('/admin/restaurants') ||
+      url.includes('/admin/login') ||
+      url.includes('/admin/setup') ||
+      url.includes('/admin/reset-password');
+
+    if (isSuperAdminRoute) {
+      const adminToken = localStorage.getItem('adminToken');
+      if (adminToken) {
+        config.headers.Authorization = `Bearer ${adminToken}`;
+      }
+    } else {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -28,8 +45,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const path = window.location.pathname;
 
-      // Don't auto-redirect on login/admin pages or during login attempts.
-      // Let those pages handle their own error messages.
       const isAuthPage =
         path.startsWith('/admin') ||
         path === '/login' ||
@@ -38,7 +53,8 @@ api.interceptors.response.use(
       const isLoginRequest =
         error.config?.url?.includes('/auth/login') ||
         error.config?.url?.includes('/admin/login') ||
-        error.config?.url?.includes('/admin/setup');
+        error.config?.url?.includes('/admin/setup') ||
+        error.config?.url?.includes('/admin/reset-password');
 
       if (!isAuthPage && !isLoginRequest) {
         localStorage.removeItem('token');
