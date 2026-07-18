@@ -43,9 +43,34 @@ export default function CustomerOrder() {
       setCategories(cats);
       setSelectedCategory('All');
 
-      // Always show phone modal — MongoDB is the only session store.
-      // This prevents one person's session leaking to another person on the same device,
-      // and works across any table/QR since identity is the phone number, not the device.
+      // Check sessionStorage — this persists across page navigation within the SAME tab,
+      // but auto-clears when the tab is closed. So switching menu ↔ order status ↔ past orders
+      // won't re-ask for phone, but a fresh visit (new tab / reopened) will.
+      const rest = response.data.restaurant;
+      const restId = rest._id || rest.id;
+      const sessionKey = `dine_session_${restId}`;
+      const savedSession = sessionStorage.getItem(sessionKey);
+
+      if (savedSession) {
+        try {
+          const session = JSON.parse(savedSession);
+          // Re-fetch fresh profile from MongoDB to get latest currentOrderId status
+          const custResp = await api.get(`/customer/${session.customerId}/profile`);
+          if (custResp.data.success) {
+            const cust = custResp.data.customer;
+            setCustomerId(cust.customerId);
+            setCustomerName(cust.name || '');
+            setCustomerPhone(cust.phone || '');
+            setCustomerIsExisting(cust.isExistingCustomer || false);
+            setCurrentOrderId(cust.currentOrderId || null);
+            return; // Session active — no phone modal
+          }
+        } catch (e) {
+          sessionStorage.removeItem(sessionKey);
+        }
+      }
+
+      // No active session — ask for phone
       setShowPhoneLookup(true);
     } catch (error) {
       // 403 = restaurant disabled/expired, 404 = not found
@@ -71,6 +96,9 @@ export default function CustomerOrder() {
       const restaurantId = restaurant?._id || restaurant?.id;
       const response = await api.get(`/customer/lookup?phone=${encodeURIComponent(phone)}&restaurantId=${restaurantId}`);
 
+      const restId = restaurant?._id || restaurant?.id;
+      const sessionKey = `dine_session_${restId}`;
+
       if (response.data.found) {
         const cust = response.data.customer;
         setCustomerId(cust.customerId);
@@ -80,8 +108,10 @@ export default function CustomerOrder() {
         if (cust.currentOrderId) {
           setCurrentOrderId(cust.currentOrderId);
         }
+        // Save session so navigating pages in this tab won't re-ask for phone
+        sessionStorage.setItem(sessionKey, JSON.stringify({ customerId: cust.customerId }));
       } else {
-        // New customer — pre-fill phone
+        // New customer — pre-fill phone, session saved after their first order is created
         setCustomerPhone(phone);
         setCustomerIsExisting(false);
       }
@@ -104,6 +134,9 @@ export default function CustomerOrder() {
       const cust = response.data.customer;
       setCustomerId(cust.customerId);
       setCustomerIsExisting(cust.isExistingCustomer || false);
+      // Save session so new customer isn't re-asked phone while navigating this tab
+      const restId = restaurant._id || restaurant.id;
+      sessionStorage.setItem(`dine_session_${restId}`, JSON.stringify({ customerId: cust.customerId }));
       return cust.customerId;
     } catch (error) {
       console.error('Error creating customer:', error);
