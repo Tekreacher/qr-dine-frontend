@@ -43,32 +43,14 @@ export default function CustomerOrder() {
       setCategories(cats);
       setSelectedCategory('All');
 
-      // Check if we have a stored customer for this restaurant
-      const storedCustomerId = localStorage.getItem(`customer_${uniqueCode}`);
-      const storedOrderId = localStorage.getItem(`currentOrder_${uniqueCode}`);
-
-      if (storedCustomerId) {
-        // Reload customer profile from server
-        try {
-          const custResp = await api.get(`/customer/${storedCustomerId}/profile`);
-          if (custResp.data.success) {
-            const cust = custResp.data.customer;
-            setCustomerId(cust.customerId);
-            setCustomerName(cust.name || '');
-            setCustomerPhone(cust.phone || '');
-            setCustomerIsExisting(cust.isExistingCustomer || false);
-            if (storedOrderId) setCurrentOrderId(storedOrderId);
-          }
-        } catch (e) {
-          // Profile load failed, show phone lookup
-          setShowPhoneLookup(true);
-        }
-      } else {
-        // New visitor - show phone lookup
-        setShowPhoneLookup(true);
-      }
+      // Always show phone modal — MongoDB is the only session store.
+      // This prevents one person's session leaking to another person on the same device,
+      // and works across any table/QR since identity is the phone number, not the device.
+      setShowPhoneLookup(true);
     } catch (error) {
-      alert('Restaurant not found');
+      // 403 = restaurant disabled/expired, 404 = not found
+      const msg = error.response?.data?.message || 'Restaurant not found';
+      alert(msg);
       navigate('/');
     } finally {
       setLoading(false);
@@ -95,10 +77,8 @@ export default function CustomerOrder() {
         setCustomerName(cust.name || '');
         setCustomerPhone(cust.phone || '');
         setCustomerIsExisting(cust.isExistingCustomer || false);
-        localStorage.setItem(`customer_${uniqueCode}`, cust.customerId);
         if (cust.currentOrderId) {
           setCurrentOrderId(cust.currentOrderId);
-          localStorage.setItem(`currentOrder_${uniqueCode}`, cust.currentOrderId);
         }
       } else {
         // New customer — pre-fill phone
@@ -124,7 +104,6 @@ export default function CustomerOrder() {
       const cust = response.data.customer;
       setCustomerId(cust.customerId);
       setCustomerIsExisting(cust.isExistingCustomer || false);
-      localStorage.setItem(`customer_${uniqueCode}`, cust.customerId);
       return cust.customerId;
     } catch (error) {
       console.error('Error creating customer:', error);
@@ -213,7 +192,6 @@ export default function CustomerOrder() {
       if (response.data.order) {
         const newOrderId = response.data.order._id;
         setCurrentOrderId(newOrderId);
-        localStorage.setItem(`currentOrder_${uniqueCode}`, newOrderId);
       }
 
       if (custId && response.data.order) {
