@@ -3,7 +3,7 @@ import {
   TrendingUp, DollarSign, ShoppingBag, Calendar,
   Download, ChevronLeft, ChevronRight, FileText
 } from 'lucide-react';
-import api from '../api/api';
+import api from '../../api/api';
 
 export default function Analytics() {
   const [selectedDate, setSelectedDate] = useState(new Date());
