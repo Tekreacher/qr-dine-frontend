@@ -4,8 +4,18 @@ import {
   Download, ChevronLeft, ChevronRight, FileText
 } from 'lucide-react';
 import api from '../../api/api';
+import { useAuth } from '../../contexts/AuthContext';
+import SubscriptionRing from '../../pages/SubscriptionRing';
 
 export default function Analytics() {
+  const { user } = useAuth();
+
+  const getSubDaysLeft = () => {
+    if (!user?.subscriptionExpiry) return null;
+    return Math.ceil((new Date(user.subscriptionExpiry) - new Date()) / (1000 * 60 * 60 * 24));
+  };
+  const subDaysLeft = getSubDaysLeft();
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [monthlyData, setMonthlyData] = useState({});
@@ -292,6 +302,19 @@ export default function Analytics() {
 
         {/* Calendar */}
         <div className="card">
+          {/* Subscription Ring — days left to renew */}
+          {subDaysLeft !== null && (
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">Subscription</p>
+                <p className={`text-xs ${subDaysLeft <= 7 ? 'text-red-500' : subDaysLeft <= 15 ? 'text-orange-500' : 'text-green-600'}`}>
+                  {subDaysLeft > 0 ? `${subDaysLeft} days remaining` : 'Expired — contact admin'}
+                </p>
+              </div>
+              <SubscriptionRing daysLeft={subDaysLeft} size={64} strokeWidth={6} />
+            </div>
+          )}
+
           {/* Calendar Header */}
           <div className="flex items-center justify-between mb-4">
             <button onClick={prevMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">

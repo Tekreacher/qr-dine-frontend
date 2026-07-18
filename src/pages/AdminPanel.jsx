@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, CheckCircle, XCircle, Power, RefreshCw, LogOut, Clock, AlertTriangle, Phone, Mail, Store } from 'lucide-react';
 import api from '../api/api';
+import SubscriptionRing from '../components/SubscriptionRing';
 
 export default function AdminPanel() {
   const [restaurants, setRestaurants] = useState([]);
@@ -50,13 +51,20 @@ export default function AdminPanel() {
   };
 
   const handleToggle = async (id, name, isActive) => {
-    if (!confirm(`${isActive ? 'Disable' : 'Enable'} ${name}?`)) return;
+    if (!confirm(`${isActive ? 'Disable' : 'Enable'} ${name}? This takes effect immediately.`)) return;
+    // Optimistic update — UI changes instantly before server responds
+    setRestaurants(prev => prev.map(r => r._id === id ? { ...r, isActive: !isActive } : r));
     try {
       await api.put(`/admin/restaurants/${id}/toggle`, {}, {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
+      // Silent background refresh to confirm server state
       fetchRestaurants();
-    } catch (err) { alert('Error toggling restaurant'); }
+    } catch (err) {
+      // Revert on failure
+      setRestaurants(prev => prev.map(r => r._id === id ? { ...r, isActive: isActive } : r));
+      alert('Error toggling restaurant. Please try again.');
+    }
   };
 
   const handleRenew = async (id, name) => {
@@ -104,6 +112,9 @@ export default function AdminPanel() {
     return true;
   });
 
+  // Set your monthly subscription fee per restaurant here
+  const MONTHLY_FEE = 1000;
+
   const counts = {
     pending: restaurants.filter(r => r.subscriptionStatus === 'pending').length,
     expiring: restaurants.filter(r => { const d = getDaysLeft(r.subscriptionExpiry); return d !== null && d <= 7 && d > 0; }).length,
@@ -134,9 +145,11 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           {[
             { label: 'Total Restaurants', value: restaurants.length, color: 'bg-blue-500' },
+            { label: 'Active (Paying)', value: counts.active, color: 'bg-green-500' },
+            { label: 'Monthly Revenue', value: `₹${(counts.active * MONTHLY_FEE).toLocaleString('en-IN')}`, color: 'bg-emerald-500' },
             { label: 'Pending Approval', value: counts.pending, color: 'bg-yellow-500' },
             { label: 'Expiring Soon', value: counts.expiring, color: 'bg-orange-500' },
             { label: 'Expired', value: counts.expired, color: 'bg-red-500' },
@@ -230,8 +243,16 @@ export default function AdminPanel() {
                     </div>
                   </div>
 
+                  {/* Subscription Ring — only for approved restaurants */}
+                  {r.isApproved && r.subscriptionExpiry && (
+                    <div className="flex flex-col items-center justify-center px-4">
+                      <SubscriptionRing daysLeft={daysLeft} size={72} strokeWidth={7} />
+                      <span className="text-xs text-gray-400 mt-1">to renew</span>
+                    </div>
+                  )}
+
                   {/* Action buttons */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 items-start">
                     {r.subscriptionStatus === 'pending' && (
                       <>
                         <button onClick={() => handleApprove(r._id)}
