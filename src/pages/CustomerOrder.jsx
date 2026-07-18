@@ -33,6 +33,32 @@ export default function CustomerOrder() {
     fetchRestaurant();
   }, [uniqueCode]);
 
+  // Refresh customer profile (esp. currentOrderId) whenever the tab regains focus.
+  // This ensures that after the restaurant marks an order complete, the customer's
+  // "Check Order Status" turns inactive as soon as they return to this tab.
+  const refreshProfile = async () => {
+    if (!customerId) return;
+    try {
+      const resp = await api.get(`/customer/${customerId}/profile`);
+      if (resp.data.success) {
+        const cust = resp.data.customer;
+        setCurrentOrderId(cust.currentOrderId || null);
+        setCustomerIsExisting(cust.isExistingCustomer || false);
+      }
+    } catch (e) { /* ignore */ }
+  };
+
+  useEffect(() => {
+    const onFocus = () => refreshProfile();
+    window.addEventListener('focus', onFocus);
+    // Also poll every 10 seconds while page is open
+    const interval = setInterval(refreshProfile, 10000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      clearInterval(interval);
+    };
+  }, [customerId]);
+
   const fetchRestaurant = async () => {
     try {
       const response = await api.get(`/restaurant/${uniqueCode}`);

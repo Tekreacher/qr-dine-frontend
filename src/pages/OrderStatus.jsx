@@ -27,15 +27,15 @@ export default function OrderStatus() {
   // Watch for order completion → move to history + show Thank You modal
   useEffect(() => {
     if (order && order.orderStatus === 'completed' && !showThankYou) {
-      // Move to history on the server and mark as existing customer
-      // Always pass orderId in body as primary source — don't rely on currentOrderId in DB
-      // This fixes the first order not appearing in past orders bug
+      // Move order to history + clear currentOrderId on the server.
+      // Pass orderId in body as primary source (fixes first-order-in-history bug).
       if (customerId && customerId !== 'null') {
-        api.post(`/customer/${customerId}/complete-order`, { orderId }).catch(console.error);
-      }
-      // Clear current order from localStorage
-      if (uniqueCode) {
-        localStorage.removeItem(`currentOrder_${uniqueCode}`);
+        api.post(`/customer/${customerId}/complete-order`, { orderId })
+          .then(() => {
+            // Clean up any old localStorage keys just in case
+            if (uniqueCode) localStorage.removeItem(`currentOrder_${uniqueCode}`);
+          })
+          .catch(console.error);
       }
       setShowThankYou(true);
     }
