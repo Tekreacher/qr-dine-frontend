@@ -16,7 +16,8 @@ import {
   DollarSign,
   Package,
   Clock,
-  Grid
+  Grid,
+  AlertTriangle
 } from 'lucide-react';
 import api from '../api/api';
 
@@ -31,6 +32,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   
   const { user } = useAuth();
+
+  const getDaysLeft = () => {
+    if (!user?.subscriptionExpiry) return null;
+    return Math.ceil((new Date(user.subscriptionExpiry) - new Date()) / (1000 * 60 * 60 * 24));
+  };
+  const daysLeft = getDaysLeft();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,6 +74,26 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      {daysLeft !== null && daysLeft <= 7 && daysLeft > 0 && (
+        <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
+            <p className="text-orange-800 text-sm font-medium">
+              ⚠️ Your subscription expires in <strong>{daysLeft} days</strong>. Please contact admin to renew.
+            </p>
+          </div>
+        </div>
+      )}
+      {daysLeft !== null && daysLeft <= 0 && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
+            <p className="text-red-800 text-sm font-medium">
+              🚫 Your subscription has expired. Please contact admin immediately to renew.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
