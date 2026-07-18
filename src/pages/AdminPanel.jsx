@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, CheckCircle, XCircle, Power, RefreshCw, LogOut, Clock, AlertTriangle, Phone, Mail, Store } from 'lucide-react';
 import api from '../api/api';
-import SubscriptionRing from '../components/SubscriptionRing';
+import SubscriptionRing from './SubscriptionRing';
 
 export default function AdminPanel() {
   const [restaurants, setRestaurants] = useState([]);
@@ -269,8 +269,16 @@ export default function AdminPanel() {
                     {r.isApproved && (
                       <>
                         <button onClick={() => handleRenew(r._id, r.name)}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-                          <RefreshCw className="h-4 w-4" /> Renew 30d
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            daysLeft !== null && daysLeft > 0
+                              ? 'bg-white text-green-600 border border-green-500 hover:bg-green-50'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}>
+                          {daysLeft !== null && daysLeft > 0 ? (
+                            <><CheckCircle className="h-4 w-4" /> Renewed</>
+                          ) : (
+                            <><RefreshCw className="h-4 w-4" /> Renew 30d</>
+                          )}
                         </button>
                         <button onClick={() => handleToggle(r._id, r.name, r.isActive)}
                           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${r.isActive ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gray-600 hover:bg-gray-500'} text-white`}>
