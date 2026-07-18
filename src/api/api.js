@@ -26,9 +26,25 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const path = window.location.pathname;
+
+      // Don't auto-redirect on login/admin pages or during login attempts.
+      // Let those pages handle their own error messages.
+      const isAuthPage =
+        path.startsWith('/admin') ||
+        path === '/login' ||
+        path === '/signup';
+
+      const isLoginRequest =
+        error.config?.url?.includes('/auth/login') ||
+        error.config?.url?.includes('/admin/login') ||
+        error.config?.url?.includes('/admin/setup');
+
+      if (!isAuthPage && !isLoginRequest) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
