@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   TrendingUp, DollarSign, ShoppingBag, Calendar,
-  Download, ChevronLeft, ChevronRight, FileText
+  Download, ChevronLeft, ChevronRight, FileText, CalendarRange
 } from 'lucide-react';
 import api from '../../api/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,6 +25,8 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [dayLoading, setDayLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState('');
+  const [rangeTo, setRangeTo] = useState('');
 
   useEffect(() => {
     fetchMonthData(currentMonth);
@@ -81,18 +83,19 @@ export default function Analytics() {
     }
   };
 
-  const handleDownloadExcel = async (type) => {
+  // Unified download handler — supports 'day', 'month', and 'range' (custom From/To dates)
+  const handleDownload = async (scope, format) => {
     setDownloading(true);
     try {
+      let startDate, endDate, filename;
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth();
-      let startDate, endDate, filename;
 
-      if (type === 'month') {
+      if (scope === 'month') {
         startDate = new Date(year, month, 1).toISOString();
         endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
         filename = `sales-${year}-${String(month + 1).padStart(2, '0')}`;
-      } else {
+      } else if (scope === 'day') {
         const d = new Date(selectedDate);
         d.setHours(0, 0, 0, 0);
         startDate = d.toISOString();
@@ -100,45 +103,35 @@ export default function Analytics() {
         e.setHours(23, 59, 59, 999);
         endDate = e.toISOString();
         filename = `sales-${formatDate(selectedDate)}`;
+      } else if (scope === 'range') {
+        if (!rangeFrom || !rangeTo) {
+          alert('Please select both a From and To date');
+          setDownloading(false);
+          return;
+        }
+        const from = new Date(rangeFrom);
+        from.setHours(0, 0, 0, 0);
+        const to = new Date(rangeTo);
+        to.setHours(23, 59, 59, 999);
+        if (from > to) {
+          alert('The "From" date must be before the "To" date');
+          setDownloading(false);
+          return;
+        }
+        startDate = from.toISOString();
+        endDate = to.toISOString();
+        filename = `sales-${rangeFrom}-to-${rangeTo}`;
       }
 
       const res = await api.get(
-        `/admin/orders/export?startDate=${startDate}&endDate=${endDate}&format=excel`,
+        `/admin/orders/export?startDate=${startDate}&endDate=${endDate}&format=${format}`,
         { responseType: 'blob' }
       );
 
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${filename}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('Error downloading file. Please try again.');
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handleDownloadPDF = async () => {
-    setDownloading(true);
-    try {
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth();
-      const startDate = new Date(year, month, 1).toISOString();
-      const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-
-      const res = await api.get(
-        `/admin/orders/export?startDate=${startDate}&endDate=${endDate}&format=pdf`,
-        { responseType: 'blob' }
-      );
-
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `sales-${year}-${String(month + 1).padStart(2, '0')}.pdf`);
+      link.setAttribute('download', `${filename}.${format === 'excel' ? 'xlsx' : 'pdf'}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -226,7 +219,7 @@ export default function Analytics() {
               <p className="text-sm text-gray-500">{dayOrders.length} orders · ₹{dayStats.revenue.toFixed(0)} collected</p>
             </div>
             <button
-              onClick={() => handleDownloadExcel('day')}
+              onClick={() => handleDownload('day', 'excel')}
               disabled={downloading || dayOrders.length === 0}
               className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
             >
@@ -412,7 +405,7 @@ export default function Analytics() {
               Download {monthNames[currentMonth.getMonth()]} Report
             </p>
             <button
-              onClick={() => handleDownloadExcel('month')}
+              onClick={() => handleDownload('month', 'excel')}
               disabled={downloading}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
             >
@@ -420,13 +413,63 @@ export default function Analytics() {
               Download Excel (.xlsx)
             </button>
             <button
-              onClick={handleDownloadPDF}
+              onClick={() => handleDownload('month', 'pdf')}
               disabled={downloading}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
             >
               <FileText className="h-4 w-4" />
               Download PDF
             </button>
+          </div>
+
+          {/* Custom Date Range Report */}
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1.5">
+              <CalendarRange className="h-3.5 w-3.5" />
+              Custom Range Report
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] text-gray-500 mb-1">From</label>
+                <input
+                  type="date"
+                  value={rangeFrom}
+                  onChange={(e) => setRangeFrom(e.target.value)}
+                  max={rangeTo || undefined}
+                  className="input-field text-sm py-1.5 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-gray-500 mb-1">To</label>
+                <input
+                  type="date"
+                  value={rangeTo}
+                  onChange={(e) => setRangeTo(e.target.value)}
+                  min={rangeFrom || undefined}
+                  max={formatDate(new Date())}
+                  className="input-field text-sm py-1.5 w-full"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleDownload('range', 'excel')}
+                disabled={downloading || !rangeFrom || !rangeTo}
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Excel
+              </button>
+              <button
+                onClick={() => handleDownload('range', 'pdf')}
+                disabled={downloading || !rangeFrom || !rangeTo}
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                PDF
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-400">Pick any date range to download a report just for that period.</p>
           </div>
         </div>
       </div>
