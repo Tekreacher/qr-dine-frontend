@@ -108,10 +108,16 @@ export default function CustomerOrder() {
     }
   };
 
+  const isValidIndianPhone = (num) => /^[6-9]\d{9}$/.test(num.replace(/\D/g, ''));
+
   const handlePhoneLookup = async () => {
-    const phone = phoneLookupInput.trim();
+    const phone = phoneLookupInput.trim().replace(/\D/g, '');
     if (!phone) {
       setPhoneLookupError('Please enter your phone number');
+      return;
+    }
+    if (!isValidIndianPhone(phone)) {
+      setPhoneLookupError('Please enter a valid 10-digit Indian phone number (starting with 6-9)');
       return;
     }
 
@@ -226,6 +232,10 @@ export default function CustomerOrder() {
     }
     if (!customerPhone.trim()) {
       alert('Please enter your phone number');
+      return;
+    }
+    if (!isValidIndianPhone(customerPhone)) {
+      alert('Please enter a valid 10-digit Indian phone number (starting with 6-9)');
       return;
     }
 
@@ -351,11 +361,13 @@ export default function CustomerOrder() {
               </label>
               <input
                 type="tel"
+                inputMode="numeric"
                 value={phoneLookupInput}
-                onChange={(e) => setPhoneLookupInput(e.target.value)}
+                onChange={(e) => setPhoneLookupInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 onKeyDown={(e) => e.key === 'Enter' && handlePhoneLookup()}
                 className="input-field w-full"
-                placeholder="+91 9876543210"
+                placeholder="9876543210"
+                maxLength={10}
                 autoFocus
               />
               {phoneLookupError && (
@@ -460,10 +472,12 @@ export default function CustomerOrder() {
                   </label>
                   <input
                     type="tel"
+                    inputMode="numeric"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     className="input-field"
-                    placeholder="+91 9876543210"
+                    placeholder="9876543210"
+                    maxLength={10}
                     required
                   />
                 </div>
