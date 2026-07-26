@@ -11,6 +11,7 @@ export default function CustomerOrder() {
   const [restaurant, setRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCart, setShowCart] = useState(false);
   const [tableNumber, setTableNumber] = useState('');
@@ -239,6 +240,9 @@ export default function CustomerOrder() {
       return;
     }
 
+    if (placingOrder) return;   // prevents double-tap creating two orders
+    setPlacingOrder(true);
+
     try {
       const custId = await createOrGetCustomer();
       const restaurantId = restaurant._id || restaurant.id;
@@ -259,8 +263,7 @@ export default function CustomerOrder() {
       const response = await api.post('/orders/create', orderData);
 
       if (response.data.order) {
-        const newOrderId = response.data.order._id;
-        setCurrentOrderId(newOrderId);
+        setCurrentOrderId(response.data.order._id);
       }
 
       if (custId && response.data.order) {
@@ -271,13 +274,31 @@ export default function CustomerOrder() {
 
       if (response.data.razorpayOrderId) {
         initiatePayment(response.data, custId);
-      } else {
-        alert('Order created but payment not configured');
+        return;
+      }
+
+      // No Razorpay order came back — tell the customer WHY, and still let
+      // them track the order instead of leaving them on a dead-end alert.
+      alert(
+        response.data.message ||
+        'This restaurant has not enabled online payment yet. Please pay at the counter.'
+      );
+
+      if (response.data.order) {
+        navigate(
+          `/order-status/${response.data.order._id}?customerId=${custId}&uniqueCode=${uniqueCode}`
+        );
       }
     } catch (error) {
       console.error('Order error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create order';
+      const errorMessage =
+        error.response?.data?.razorpayError ||
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to create order';
       alert(`Order failed: ${errorMessage}`);
+    } finally {
+      setPlacingOrder(false);
     }
   };
 
@@ -289,7 +310,9 @@ export default function CustomerOrder() {
 
     const options = {
       key: orderData.razorpayKeyId,
-      amount: orderData.amount * 100,
+      // Use the paise value the server already computed. Never re-multiply on
+      // the client — 4.35 * 100 === 434.99999999999994 in JavaScript.
+      amount: orderData.amountInPaise ?? Math.round(orderData.amount * 100),
       currency: 'INR',
       name: restaurant.name,
       description: 'Food Order Payment',
@@ -302,9 +325,14 @@ export default function CustomerOrder() {
             razorpaySignature: response.razorpay_signature,
             orderId: orderData.order._id
           });
-          navigate(`/order-status/${orderData.order._id}?customerId=${custId}&uniqueCode=${uniqueCode}`);
+          navigate(
+            `/order-status/${orderData.order._id}?customerId=${custId}&uniqueCode=${uniqueCode}`
+          );
         } catch (error) {
-          alert('Payment verification failed. Please contact restaurant.');
+          alert('Payment verification failed. Please show this screen to the restaurant staff.');
+          navigate(
+            `/order-status/${orderData.order._id}?customerId=${custId}&uniqueCode=${uniqueCode}`
+          );
         }
       },
       prefill: { name: customerName, contact: customerPhone },
@@ -318,6 +346,9 @@ export default function CustomerOrder() {
 
     try {
       const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', function (resp) {
+        alert(`Payment failed: ${resp.error?.description || 'Please try again.'}`);
+      });
       razorpay.open();
     } catch (error) {
       alert('Failed to open payment window. Please try again.');
@@ -607,6 +638,7 @@ export default function CustomerOrder() {
                 removeFromCart={removeFromCart}
                 getTotal={getTotal}
                 handleCheckout={handleCheckout}
+                placingOrder={placingOrder}
               />
             </div>
           </div>
@@ -627,6 +659,7 @@ export default function CustomerOrder() {
               removeFromCart={removeFromCart}
               getTotal={getTotal}
               handleCheckout={handleCheckout}
+              placingOrder={placingOrder}
             />
           </div>
         </div>
@@ -635,7 +668,7 @@ export default function CustomerOrder() {
   );
 }
 
-function CartSummary({ cart, updateQuantity, removeFromCart, getTotal, handleCheckout }) {
+function CartSummary({ cart, updateQuantity, removeFromCart, getTotal, handleCheckout, placingOrder }) {
   if (cart.length === 0) {
     return (
       <div className="text-center py-8">
@@ -685,8 +718,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, getTotal, handleChe
           <span className="text-2xl font-bold text-blue-600">₹{getTotal().toFixed(2)}</span>
         </div>
 
-        <button onClick={handleCheckout} className="w-full btn-primary py-3 text-lg">
-          Proceed to Payment
+        <button
+          onClick={handleCheckout}
+          disabled={placingOrder}
+          className="w-full btn-primary py-3 text-lg disabled:opacity-50"
+        >
+          {placingOrder ? 'Processing…' : 'Proceed to Payment'}
         </button>
       </div>
     </div>
