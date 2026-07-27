@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import CustomerOrder from './pages/CustomerOrder';
 import OrderStatus from './pages/OrderStatus';
 import PastOrders from './pages/PastOrders';
+import BillView from './pages/BillView';
 import Orders from './pages/Orders';
 import AdminLogin from './pages/AdminLogin';
 import AdminPanel from './pages/AdminPanel';
@@ -23,6 +24,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/menu/:uniqueCode" element={<CustomerOrder />} />
           <Route path="/order-status/:orderId" element={<OrderStatus />} />
+          <Route path="/bill/:orderId" element={<BillView />} />
           <Route path="/order/:orderId" element={<Orders />} />
           <Route path="/past-orders/:customerId" element={<PastOrders />} />
           <Route path="/admin" element={<AdminLogin />} />

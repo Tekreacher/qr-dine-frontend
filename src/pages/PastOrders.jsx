@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { History, ArrowLeft, Clock, ShoppingBag, CheckCircle } from 'lucide-react';
+import { History, ArrowLeft, Clock, ShoppingBag, CheckCircle, Download } from 'lucide-react';
 import api from '../api/api';
 
 export default function PastOrders() {
@@ -44,7 +44,18 @@ export default function PastOrders() {
   };
 
   const handleViewOrder = (orderId) => {
-    navigate(`/order-status/${orderId}?uniqueCode=${uniqueCode || ''}`);
+    // Opens the full bill view page (with its own Download button and a
+    // back arrow that returns here to Past Orders)
+    navigate(`/bill/${orderId}?customerId=${customerId || ''}&uniqueCode=${uniqueCode || ''}`);
+  };
+
+  const handleDownloadBill = (e, orderId) => {
+    // Don't let the card's own click (view order) fire too
+    e.stopPropagation();
+    const billUrl = `${import.meta.env.VITE_BACKEND_URL}/api/orders/${orderId}/bill`;
+    // Opens in a new tab / downloads directly — this Past Orders page stays
+    // open underneath, so the user is right back here after downloading.
+    window.open(billUrl, '_blank');
   };
 
   if (loading) {
@@ -154,6 +165,15 @@ export default function PastOrders() {
                       </p>
                     </div>
                   )}
+
+                  {/* Download Bill */}
+                  <button
+                    onClick={(e) => handleDownloadBill(e, orderId)}
+                    className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-green-600 text-green-700 font-semibold hover:bg-green-50 transition-colors text-sm"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Bill
+                  </button>
                 </div>
               );
             })}
