@@ -20,7 +20,7 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
   const handleCheckOrderStatus = () => {
     setShowMenu(false);
     if (currentOrderId) {
-      navigate(`/order-status/${currentOrderId}?uniqueCode=${uniqueCode || ''}`);
+      navigate(`/order-status/${currentOrderId}?customerId=${customerId || ''}&uniqueCode=${uniqueCode || ''}`);
     } else {
       alert('No active order found. Place an order first to track its status!');
     }
