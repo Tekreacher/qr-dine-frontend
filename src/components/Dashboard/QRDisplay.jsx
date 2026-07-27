@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Download, RefreshCw, ExternalLink, QrCode as QrCodeIcon, Lock, Eye, EyeOff, Shield, X, Mail } from 'lucide-react';
+import { Download, RefreshCw, ExternalLink, QrCode as QrCodeIcon, Lock, Eye, EyeOff, Shield, X, Mail, Link2, Copy, CheckCircle2 } from 'lucide-react';
 import api from '../../api/api';
 
 export default function QRDisplay() {
   const [qrCode, setQrCode] = useState('');
   const [orderUrl, setOrderUrl] = useState('');
   const [uniqueCode, setUniqueCode] = useState('');
+  const [restaurantId, setRestaurantId] = useState('');
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -18,6 +19,7 @@ export default function QRDisplay() {
       const restaurant = response.data.restaurant;
 
       setUniqueCode(restaurant.uniqueCode);
+      setRestaurantId(restaurant._id || restaurant.id);
 
       if (restaurant.qrCode) {
         setQrCode(restaurant.qrCode);
@@ -170,6 +172,161 @@ export default function QRDisplay() {
         </h3>
         <RazorpayConfig />
       </div>
+
+      <div className="card bg-blue-50 border border-blue-200">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <Link2 className="h-5 w-5" />
+          Webhook Setup (recommended)
+        </h3>
+        <WebhookSetup restaurantId={restaurantId} />
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
+// Webhook Setup — lets the restaurant connect Razorpay's webhook
+// themselves, no developer/Postman step required.
+// ────────────────────────────────────────────────────────────────
+function WebhookSetup({ restaurantId }) {
+  const [webhookSecret, setWebhookSecret] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [webhookConfigured, setWebhookConfigured] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const webhookUrl = restaurantId
+    ? `${import.meta.env.VITE_BACKEND_URL}/api/webhook/razorpay/${restaurantId}`
+    : '';
+
+  useEffect(() => {
+    fetchStatus();
+  }, []);
+
+  const fetchStatus = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/restaurant/razorpay-status');
+      setWebhookConfigured(!!res.data.webhookConfigured);
+    } catch (error) {
+      console.error('Error fetching webhook status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const saveSecret = async () => {
+    if (!webhookSecret || webhookSecret.trim().length < 8) {
+      setMessage('error:Paste the webhook secret from Razorpay first (at least 8 characters).');
+      return;
+    }
+    setSaving(true);
+    setMessage('');
+    try {
+      await api.put('/restaurant/razorpay-webhook-secret', { webhookSecret: webhookSecret.trim() });
+      setMessage('success:Webhook connected! Payments will now stay in sync automatically.');
+      setWebhookConfigured(true);
+      setWebhookSecret('');
+      setTimeout(() => setMessage(''), 5000);
+    } catch (error) {
+      setMessage(`error:${error.response?.data?.message || 'Failed to save webhook secret'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <p className="text-sm text-gray-500">Loading webhook status...</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-700">
+        This makes sure an order is correctly marked "paid" even if a customer's phone loses
+        connection right after paying. Takes about 2 minutes, one-time setup.
+      </p>
+
+      {webhookConfigured && (
+        <div className="bg-white border border-green-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="bg-green-100 p-2 rounded-full">
+            <CheckCircle2 className="h-5 w-5 text-green-700" />
+          </div>
+          <div>
+            <p className="font-medium text-gray-800">Webhook connected</p>
+            <p className="text-sm text-gray-500">You can update it below any time your Razorpay secret changes.</p>
+          </div>
+        </div>
+      )}
+
+      {message && (
+        <div className={`p-3 rounded-lg text-sm ${
+          message.startsWith('success')
+            ? 'bg-green-50 text-green-700 border border-green-200'
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {message.split(':').slice(1).join(':')}
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Step 1 — Copy this Webhook URL
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={webhookUrl}
+            readOnly
+            className="input-field flex-1 text-xs font-mono"
+          />
+          <button
+            onClick={copyUrl}
+            className="btn-secondary flex items-center gap-1 whitespace-nowrap"
+            disabled={!webhookUrl}
+          >
+            <Copy className="h-4 w-4" />
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700">
+        <p className="font-medium mb-2">Step 2 — In your Razorpay Dashboard:</p>
+        <ol className="list-decimal list-inside space-y-1.5">
+          <li>Go to <span className="font-mono text-xs bg-gray-200 px-1 rounded">Settings → Webhooks → Add New Webhook</span></li>
+          <li>Paste the URL above into the "Webhook URL" field</li>
+          <li>Check the boxes for <span className="font-mono text-xs bg-gray-200 px-1 rounded">payment.captured</span> and <span className="font-mono text-xs bg-gray-200 px-1 rounded">payment.failed</span></li>
+          <li>Razorpay will ask you to enter a <strong>Secret</strong> — type any strong value, save the webhook, and keep that value handy</li>
+        </ol>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Step 3 — Paste that same secret here
+        </label>
+        <input
+          type="text"
+          value={webhookSecret}
+          onChange={(e) => setWebhookSecret(e.target.value)}
+          placeholder="Paste the webhook secret you just set in Razorpay"
+          className="input-field w-full"
+        />
+      </div>
+
+      <button
+        onClick={saveSecret}
+        disabled={saving || !webhookSecret}
+        className="btn-primary disabled:opacity-50"
+      >
+        {saving ? 'Saving...' : webhookConfigured ? 'Update Webhook Secret' : 'Save Webhook Secret'}
+      </button>
     </div>
   );
 }
