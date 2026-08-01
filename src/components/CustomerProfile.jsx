@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { User, History, FileText, ChevronDown, Clock, AlertCircle, ExternalLink } from 'lucide-react';
+import { User, History, FileText, ChevronDown, Clock, AlertCircle, ExternalLink, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
-export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, uniqueCode }) {
+export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, uniqueCode, onLogout }) {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
@@ -30,6 +30,18 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
     setShowMenu(false);
     if (customerId) {
       navigate(`/past-orders/${customerId}?uniqueCode=${uniqueCode || ''}`);
+    }
+  };
+
+  const handleLogout = () => {
+    // Warn if they'd be walking away from an order that's still being made
+    const message = currentOrderId
+      ? 'You have an active order in progress. Logging out will not cancel it — you can see it again by entering your phone number.\n\nLog out now?'
+      : 'Log out? Your order history is saved and will come back when you enter your phone number again.';
+
+    if (window.confirm(message)) {
+      setShowMenu(false);
+      if (onLogout) onLogout();
     }
   };
 
@@ -114,6 +126,27 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
                   </p>
                 </div>
               </div>
+            )}
+
+            {/* Logout — only meaningful once a profile is loaded */}
+            {customerId && (
+              <>
+                <div className="border-t border-gray-100 my-2"></div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-50 rounded-lg text-left transition-colors group"
+                >
+                  <div className="bg-red-100 p-2.5 rounded-lg group-hover:bg-red-200 transition-colors flex-shrink-0">
+                    <LogOut className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-red-700">Log Out</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Your history stays saved on your phone number
+                    </p>
+                  </div>
+                </button>
+              </>
             )}
           </div>
 

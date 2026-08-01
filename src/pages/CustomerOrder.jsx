@@ -177,6 +177,31 @@ export default function CustomerOrder() {
     }
   };
 
+  const handleLogout = () => {
+    // Clear this tab's session so the phone popup asks again on next use.
+    // Nothing is deleted server-side — the customer's profile and full order
+    // history stay against their phone number and come straight back when
+    // they enter it again.
+    const restId = restaurant?._id || restaurant?.id;
+    if (restId) {
+      sessionStorage.removeItem(`dine_session_${restId}`);
+    }
+
+    // Reset all customer state on the page
+    setCustomerId(null);
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerIsExisting(false);
+    setCurrentOrderId(null);
+    setCart([]);
+    setTableNumber('');
+
+    // Send them back to the phone entry popup
+    setPhoneLookupInput('');
+    setPhoneLookupError('');
+    setShowPhoneLookup(true);
+  };
+
   const addToCart = (item) => {
     const existingItem = cart.find(cartItem => cartItem._id === item._id);
     if (existingItem) {
@@ -445,6 +470,7 @@ export default function CustomerOrder() {
                 isExistingCustomer={customerIsExisting}
                 currentOrderId={currentOrderId}
                 uniqueCode={uniqueCode}
+                onLogout={handleLogout}
               />
               <button
                 onClick={() => setShowCart(!showCart)}
