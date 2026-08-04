@@ -287,19 +287,27 @@ export default function CustomerOrder() {
 
       const response = await api.post('/orders/create', orderData);
 
-      if (response.data.order) {
-        setCurrentOrderId(response.data.order._id);
-      }
-
-      if (custId && response.data.order) {
-        await api.put(`/customer/${custId}/current-order`, {
-          orderId: response.data.order._id
-        });
-      }
+      // NOTE: the order record now exists, but it is NOT yet the customer's
+      // "current order". An unpaid order is not a placed order — it must not
+      // appear under Check Order Status or ever reach Past Orders. The
+      // current-order pointer is set only after payment actually succeeds
+      // (see initiatePayment below), or immediately for restaurants that
+      // take cash at the counter, where there is no online payment step.
 
       if (response.data.razorpayOrderId) {
         initiatePayment(response.data, custId);
         return;
+      }
+
+      // Cash-at-counter restaurant: no online payment exists for this order,
+      // so placing it IS the completed customer action.
+      if (response.data.order) {
+        setCurrentOrderId(response.data.order._id);
+        if (custId) {
+          await api.put(`/customer/${custId}/current-order`, {
+            orderId: response.data.order._id
+          });
+        }
       }
 
       // No Razorpay order came back — tell the customer WHY, and still let
@@ -350,6 +358,19 @@ export default function CustomerOrder() {
             razorpaySignature: response.razorpay_signature,
             orderId: orderData.order._id
           });
+
+          // Payment confirmed — only NOW does this become the customer's
+          // current order. (The server also sets this itself during
+          // verification, so the pointer is correct even if this call fails.)
+          setCurrentOrderId(orderData.order._id);
+          if (custId) {
+            try {
+              await api.put(`/customer/${custId}/current-order`, {
+                orderId: orderData.order._id
+              });
+            } catch (e) { /* server-side already handled it */ }
+          }
+
           navigate(
             `/order-status/${orderData.order._id}?customerId=${custId}&uniqueCode=${uniqueCode}`
           );
