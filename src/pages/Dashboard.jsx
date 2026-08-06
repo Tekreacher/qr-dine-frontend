@@ -7,6 +7,7 @@ import MenuEditor from '../components/Dashboard/MenuEditor';
 import OrdersTable from '../components/Dashboard/OrdersTable';
 import QRDisplay from '../components/Dashboard/QRDisplay';
 import Analytics from '../components/Dashboard/Analytics';
+import RestaurantSettings from '../components/Dashboard/RestaurantSettings';
 import { 
   Upload, 
   Edit, 
@@ -17,7 +18,8 @@ import {
   Package,
   Clock,
   Grid,
-  AlertTriangle
+  AlertTriangle,
+  Settings
 } from 'lucide-react';
 import api from '../api/api';
 
@@ -69,7 +71,8 @@ export default function Dashboard() {
     { id: 'menu', label: 'Menu Items', icon: Edit },
     { id: 'orders', label: 'Orders', icon: ShoppingBag },
     { id: 'qr', label: 'QR Code', icon: QrCodeIcon },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp }
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+    { id: 'settings', label: 'Restaurant Details', icon: Settings }
   ];
 
   return (
@@ -206,6 +209,10 @@ export default function Dashboard() {
             
             {activeTab === 'analytics' && (
               <Analytics />
+            )}
+
+            {activeTab === 'settings' && (
+              <RestaurantSettings />
             )}
           </div>
         </div>

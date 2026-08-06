@@ -473,7 +473,15 @@ export default function CustomerOrder() {
           <div className="flex justify-between items-center gap-2">
             <div className="min-w-0 flex-1">
               <h1 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2 truncate">
-                <Store className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
+                {restaurant.logo ? (
+                  <img
+                    src={restaurant.logo}
+                    alt={restaurant.name}
+                    className="h-9 w-9 sm:h-11 sm:w-11 rounded-lg object-cover flex-shrink-0 border border-gray-200"
+                  />
+                ) : (
+                  <Store className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
+                )}
                 <span className="truncate">{restaurant.name}</span>
               </h1>
               {restaurant.address && (
