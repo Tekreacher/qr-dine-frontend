@@ -470,21 +470,21 @@ export default function CustomerOrder() {
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Store className="h-6 w-6 text-blue-600" />
-                {restaurant.name}
+          <div className="flex justify-between items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2 truncate">
+                <Store className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
+                <span className="truncate">{restaurant.name}</span>
               </h1>
               {restaurant.address && (
-                <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                <p className="text-xs sm:text-sm text-gray-600 mt-1 flex items-center gap-1 truncate">
                   <MapPin className="h-4 w-4" />
                   {restaurant.address.city}, {restaurant.address.state}
                 </p>
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <CustomerProfile
                 customerId={customerId}
                 customerName={customerName}
@@ -498,7 +498,7 @@ export default function CustomerOrder() {
                 className="relative btn-primary flex items-center gap-2"
               >
                 <ShoppingCart className="h-5 w-5" />
-                <span>Cart</span>
+                <span className="hidden sm:inline">Cart</span>
                 {cart.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
                     {cart.length}

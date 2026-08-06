@@ -71,8 +71,8 @@ export default function QRDisplay() {
         <div className="grid md:grid-cols-2 gap-6">
           <div className="card text-center">
             <h3 className="font-semibold mb-4">Your QR Code</h3>
-            <div className="bg-white p-6 rounded-lg inline-block border-2 border-gray-200">
-              <img src={qrCode} alt="Restaurant QR Code" className="w-64 h-64 mx-auto" />
+            <div className="bg-white p-3 sm:p-6 rounded-lg inline-block border-2 border-gray-200 max-w-full">
+              <img src={qrCode} alt="Restaurant QR Code" className="w-full max-w-[16rem] h-auto mx-auto" />
             </div>
             <div className="mt-6 flex gap-3 justify-center">
               <button onClick={downloadQR} className="btn-primary flex items-center gap-2">
@@ -279,12 +279,12 @@ function WebhookSetup({ restaurantId }) {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Step 1 — Copy this Webhook URL
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={webhookUrl}
             readOnly
-            className="input-field flex-1 text-xs font-mono"
+            className="input-field flex-1 text-[10px] sm:text-xs font-mono min-w-0"
           />
           <button
             onClick={copyUrl}
