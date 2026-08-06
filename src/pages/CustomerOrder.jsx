@@ -220,10 +220,12 @@ export default function CustomerOrder() {
   };
 
   const updateQuantity = (itemId, change) => {
+    // Always apply the new quantity — if it drops to 0 (pressing minus at 1),
+    // the filter below removes the item from the cart entirely, so the user
+    // doesn't have to hunt for the delete icon.
     setCart(cart.map(item => {
       if (item._id === itemId) {
-        const newQuantity = item.quantity + change;
-        return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
+        return { ...item, quantity: item.quantity + change };
       }
       return item;
     }).filter(item => item.quantity > 0));
