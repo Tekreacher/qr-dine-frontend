@@ -1,8 +1,146 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Plus, Minus, Trash2, Store, MapPin, Phone } from 'lucide-react';
+import {
+  ShoppingCart, Plus, Minus, Trash2, Store, MapPin, Phone,
+  User, Leaf, Drumstick, LayoutGrid, UtensilsCrossed, Hash, ChefHat
+} from 'lucide-react';
 import api from '../api/api';
 import CustomerProfile from '../components/CustomerProfile';
+
+/* ===========================================================================
+   BRAND THEMING
+   Reads the dominant colour out of the restaurant's uploaded logo and turns
+   it into a small palette. Every accent on this page derives from it, so each
+   restaurant's customers see that restaurant's identity.
+   =========================================================================== */
+
+const DEFAULT_BRAND = '#F97316'; // warm orange, used until/unless a logo says otherwise
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+}
+
+function shade(hex, amount) {
+  // amount < 0 darkens, > 0 lightens
+  const { r, g, b } = hexToRgb(hex);
+  const t = amount < 0 ? 0 : 255;
+  const p = Math.abs(amount);
+  return rgbToHex(r + (t - r) * p, g + (t - g) * p, b + (t - b) * p);
+}
+
+function relativeLuminance(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const f = v => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+/**
+ * Pull the most-used meaningful colour out of an image.
+ * Skips near-white, near-black and washed-out greys so a white logo
+ * background or black outline never becomes the brand colour.
+ */
+function extractDominantColor(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onerror = () => resolve(null);
+    img.onload = () => {
+      try {
+        const size = 48;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+
+        const { data } = ctx.getImageData(0, 0, size, size);
+        const buckets = {};
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+          if (a < 200) continue;
+
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const lightness = (max + min) / 2;
+          const saturation = max === min ? 0 : (max - min) / (lightness > 127 ? (510 - max - min) : (max + min));
+
+          if (lightness > 235) continue;      // near white
+          if (lightness < 25) continue;       // near black
+          if (saturation < 0.18) continue;    // grey / washed out
+
+          // Quantise so similar shades group together
+          const key = `${Math.round(r / 24)}-${Math.round(g / 24)}-${Math.round(b / 24)}`;
+          if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, n: 0 };
+          buckets[key].r += r;
+          buckets[key].g += g;
+          buckets[key].b += b;
+          buckets[key].n += 1;
+        }
+
+        const best = Object.values(buckets).sort((a, b) => b.n - a.n)[0];
+        if (!best) return resolve(null);
+
+        let hex = rgbToHex(best.r / best.n, best.g / best.n, best.b / best.n);
+
+        // Keep white button text readable — darken anything too pale.
+        let guard = 0;
+        while (relativeLuminance(hex) > 0.42 && guard < 6) {
+          hex = shade(hex, -0.16);
+          guard++;
+        }
+        resolve(hex);
+      } catch (e) {
+        resolve(null); // canvas blocked by CORS — fall back quietly
+      }
+    };
+
+    img.src = url;
+  });
+}
+
+function buildTheme(brand) {
+  return {
+    brand,
+    brandDark: shade(brand, -0.22),
+    brandDeep: shade(brand, -0.42),
+    brandSoft: shade(brand, 0.86),   // icon circles, chips
+    brandTint: shade(brand, 0.955),  // page background wash
+    brandLine: shade(brand, 0.78)    // hairline borders
+  };
+}
+
+function useBrandTheme(logoUrl) {
+  const [brand, setBrand] = useState(DEFAULT_BRAND);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!logoUrl) {
+      setBrand(DEFAULT_BRAND);
+      return;
+    }
+    extractDominantColor(logoUrl).then(color => {
+      if (!cancelled && color) setBrand(color);
+    });
+    return () => { cancelled = true; };
+  }, [logoUrl]);
+
+  return buildTheme(brand);
+}
+
 
 export default function CustomerOrder() {
   const { uniqueCode } = useParams();
@@ -29,6 +167,13 @@ export default function CustomerOrder() {
   const [phoneLookupInput, setPhoneLookupInput] = useState('');
   const [phoneLookupLoading, setPhoneLookupLoading] = useState(false);
   const [phoneLookupError, setPhoneLookupError] = useState('');
+
+  // ── Brand theming ─────────────────────────────────────────────────────────
+  // The whole page takes its colour from the restaurant's own logo, so a
+  // customer sees the restaurant's identity, not ours. Falls back to a warm
+  // orange when there's no logo or the colour can't be read.
+  const theme = useBrandTheme(restaurant?.logo);
+
 
   useEffect(() => {
     fetchRestaurant();
@@ -403,9 +548,21 @@ export default function CustomerOrder() {
     }
   };
 
+
+  const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+
+  const themeVars = {
+    '--brand': theme.brand,
+    '--brand-dark': theme.brandDark,
+    '--brand-deep': theme.brandDeep,
+    '--brand-soft': theme.brandSoft,
+    '--brand-tint': theme.brandTint,
+    '--brand-line': theme.brandLine
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="spinner"></div>
       </div>
     );
@@ -413,282 +570,455 @@ export default function CustomerOrder() {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <p className="text-gray-600">Restaurant not found</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="qrd-root min-h-screen" style={themeVars}>
+      <style>{`
+        .qrd-root {
+          background:
+            radial-gradient(1200px 500px at 15% -10%, var(--brand-tint) 0%, transparent 60%),
+            radial-gradient(900px 450px at 100% 0%, var(--brand-tint) 0%, transparent 55%),
+            #FDFDFC;
+          color: #1B1B1A;
+        }
+        .qrd-card {
+          background: #FFFFFF;
+          border: 1px solid #F0EEEA;
+          border-radius: 20px;
+          box-shadow: 0 1px 2px rgba(16,15,14,.04), 0 8px 24px -12px rgba(16,15,14,.10);
+        }
+        .qrd-title {
+          font-weight: 700;
+          letter-spacing: -0.02em;
+        }
+        .qrd-chip {
+          background: var(--brand-soft);
+          color: var(--brand-deep);
+        }
+        /* Primary action — the one place the page raises its voice */
+        .qrd-cta {
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+          color: #fff;
+          box-shadow: 0 10px 24px -10px var(--brand);
+          transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+        }
+        .qrd-cta:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 16px 30px -12px var(--brand);
+        }
+        .qrd-cta:active:not(:disabled) { transform: translateY(0) scale(.99); }
+        .qrd-cta:disabled { filter: grayscale(.35) opacity(.65); box-shadow: none; }
+        .qrd-cta::after {
+          content: '';
+          position: absolute; inset: 0;
+          background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.35) 50%, transparent 65%);
+          transform: translateX(-120%);
+          transition: transform .7s ease;
+        }
+        .qrd-cta:hover:not(:disabled)::after { transform: translateX(120%); }
 
-      {/* Phone Lookup Modal */}
+        .qrd-pill {
+          border-radius: 999px;
+          transition: transform .14s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease;
+        }
+        .qrd-pill:active { transform: scale(.96); }
+        .qrd-pill-on {
+          background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+          color: #fff;
+          box-shadow: 0 8px 18px -10px var(--brand);
+        }
+        .qrd-pill-off { background: #F6F5F3; color: #57534E; }
+        .qrd-pill-off:hover { background: #EFEDEA; }
+
+        .qrd-item {
+          transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+        .qrd-item:hover {
+          transform: translateY(-3px);
+          border-color: var(--brand-line);
+          box-shadow: 0 1px 2px rgba(16,15,14,.04), 0 18px 34px -18px rgba(16,15,14,.22);
+        }
+        .qrd-input {
+          width: 100%;
+          background: #FBFAF9;
+          border: 1px solid #EDEBE7;
+          border-radius: 14px;
+          padding: .7rem .9rem .7rem 2.5rem;
+          font-size: .95rem;
+          transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+          outline: none;
+        }
+        .qrd-input:focus {
+          background: #fff;
+          border-color: var(--brand);
+          box-shadow: 0 0 0 4px var(--brand-soft);
+        }
+        .qrd-step {
+          width: 34px; height: 34px;
+          display: flex; align-items: center; justify-content: center;
+          border-radius: 11px;
+          background: #fff;
+          border: 1px solid #ECEAE6;
+          transition: transform .12s ease, border-color .16s ease, color .16s ease;
+        }
+        .qrd-step:hover { border-color: var(--brand); color: var(--brand); }
+        .qrd-step:active { transform: scale(.9); }
+
+        .qrd-badge-pop { animation: qrdPop .25s ease; }
+        @keyframes qrdPop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+        .qrd-rise { animation: qrdRise .32s ease both; }
+        @keyframes qrdRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        @media (prefers-reduced-motion: reduce) {
+          .qrd-cta, .qrd-pill, .qrd-item, .qrd-step, .qrd-rise, .qrd-badge-pop { animation: none !important; transition: none !important; }
+          .qrd-cta:hover { transform: none; }
+          .qrd-cta::after { display: none; }
+        }
+      `}</style>
+
+      {/* ── Phone lookup ── */}
       {showPhoneLookup && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="qrd-card w-full max-w-sm p-7 qrd-rise">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Phone className="h-8 w-8 text-blue-600" />
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                style={{ background: 'var(--brand-soft)' }}
+              >
+                <Phone className="h-6 w-6" style={{ color: 'var(--brand-deep)' }} />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Welcome!</h2>
-              <p className="text-gray-500 mt-1 text-sm">Enter your phone number to continue</p>
+              <h2 className="text-2xl qrd-title">Welcome</h2>
+              <p className="text-gray-500 mt-1 text-sm">
+                Enter your number so we can pull up your orders
+              </p>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number *
-              </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone number
+            </label>
+            <div className="relative">
+              <Phone className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="tel"
                 inputMode="numeric"
                 value={phoneLookupInput}
                 onChange={(e) => setPhoneLookupInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 onKeyDown={(e) => e.key === 'Enter' && handlePhoneLookup()}
-                className="input-field w-full"
+                className="qrd-input"
                 placeholder="9876543210"
                 maxLength={10}
                 autoFocus
               />
-              {phoneLookupError && (
-                <p className="text-red-500 text-sm mt-1">{phoneLookupError}</p>
-              )}
             </div>
+            {phoneLookupError && (
+              <p className="text-red-600 text-sm mt-2">{phoneLookupError}</p>
+            )}
 
             <button
               onClick={handlePhoneLookup}
               disabled={phoneLookupLoading}
-              className="w-full btn-primary py-3 text-base disabled:opacity-50"
+              className="qrd-cta w-full mt-5 py-3.5 rounded-2xl font-semibold text-base"
             >
-              {phoneLookupLoading ? 'Looking up...' : 'Continue'}
+              {phoneLookupLoading ? 'Checking…' : 'Continue'}
             </button>
 
             <p className="text-xs text-gray-400 text-center mt-4">
-              Returning customer? Your profile will be loaded automatically.
+              Ordered here before? Your details load automatically.
             </p>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2 truncate">
-                {restaurant.logo ? (
-                  <img
-                    src={restaurant.logo}
-                    alt={restaurant.name}
-                    className="h-9 w-9 sm:h-11 sm:w-11 rounded-lg object-cover flex-shrink-0 border border-gray-200"
-                  />
-                ) : (
-                  <Store className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
-                )}
-                <span className="truncate">{restaurant.name}</span>
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-[#F0EEEA]">
+        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {restaurant.logo ? (
+              <img
+                src={restaurant.logo}
+                alt={restaurant.name}
+                className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl object-cover flex-shrink-0"
+                style={{ boxShadow: '0 0 0 2px #fff, 0 0 0 3.5px var(--brand-line)' }}
+              />
+            ) : (
+              <div
+                className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--brand-soft)' }}
+              >
+                <Store className="h-5 w-5" style={{ color: 'var(--brand-deep)' }} />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl qrd-title truncate leading-tight">
+                {restaurant.name}
               </h1>
-              {restaurant.address && (
-                <p className="text-xs sm:text-sm text-gray-600 mt-1 flex items-center gap-1 truncate">
-                  <MapPin className="h-4 w-4" />
-                  {restaurant.address.city}, {restaurant.address.state}
+              {restaurant.address && (restaurant.address.city || restaurant.address.state) && (
+                <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 truncate">
+                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--brand)' }} />
+                  <span className="truncate">
+                    {[restaurant.address.city, restaurant.address.state].filter(Boolean).join(', ')}
+                  </span>
                 </p>
               )}
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <CustomerProfile
-                customerId={customerId}
-                customerName={customerName}
-                isExistingCustomer={customerIsExisting}
-                currentOrderId={currentOrderId}
-                uniqueCode={uniqueCode}
-                onLogout={handleLogout}
-              />
-              <button
-                onClick={() => setShowCart(!showCart)}
-                className="relative btn-primary flex items-center gap-2"
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <CustomerProfile
+              customerId={customerId}
+              customerName={customerName}
+              isExistingCustomer={customerIsExisting}
+              currentOrderId={currentOrderId}
+              uniqueCode={uniqueCode}
+              onLogout={handleLogout}
+            />
+            <button
+              onClick={() => setShowCart(!showCart)}
+              className="qrd-cta qrd-pill flex items-center gap-2 px-4 sm:px-5 py-2.5 font-semibold text-sm"
+            >
+              <ShoppingCart className="h-4.5 w-4.5" />
+              <span className="hidden sm:inline">Cart</span>
+              <span
+                key={cartCount}
+                className={`min-w-[22px] h-[22px] px-1.5 rounded-full bg-white/25 text-xs font-bold flex items-center justify-center ${cartCount > 0 ? 'qrd-badge-pop' : ''}`}
               >
-                <ShoppingCart className="h-5 w-5" />
-                <span className="hidden sm:inline">Cart</span>
-                {cart.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                    {cart.length}
-                  </span>
-                )}
-              </button>
-            </div>
+                {cartCount}
+              </span>
+            </button>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-5">
 
-            {/* Customer Info */}
-            <div className="card">
-              <h2 className="font-semibold mb-4">Your Details</h2>
+            {/* ── Your details ── */}
+            <section className="qrd-card p-5 sm:p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="h-9 w-9 rounded-xl flex items-center justify-center qrd-chip">
+                  <User className="h-4.5 w-4.5" />
+                </div>
+                <h2 className="text-lg qrd-title">Your details</h2>
+              </div>
+
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Table Number <span className="text-red-500">*</span>
+                    Table number <span style={{ color: 'var(--brand)' }}>*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={tableNumber}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                    className="input-field"
-                    placeholder="5"
-                    required
-                  />
+                  <div className="relative">
+                    <Hash className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={tableNumber}
+                      onChange={(e) => setTableNumber(e.target.value)}
+                      className="qrd-input"
+                      placeholder="5"
+                    />
+                  </div>
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your Name <span className="text-red-500">*</span>
+                    Your name <span style={{ color: 'var(--brand)' }}>*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="input-field"
-                    placeholder="John Doe"
-                    required
-                  />
+                  <div className="relative">
+                    <User className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="qrd-input"
+                      placeholder="John Doe"
+                    />
+                  </div>
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number <span className="text-red-500">*</span>
+                    Phone number <span style={{ color: 'var(--brand)' }}>*</span>
                   </label>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    className="input-field"
-                    placeholder="9876543210"
-                    maxLength={10}
-                    required
-                  />
+                  <div className="relative">
+                    <Phone className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      className="qrd-input"
+                      placeholder="9876543210"
+                      maxLength={10}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Dietary Filter */}
-            <div className="card">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <span className="font-medium text-gray-700">Dietary Preference:</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setVegFilter('all')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                      vegFilter === 'all' ? 'bg-blue-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >All Items</button>
-                  <button
-                    onClick={() => setVegFilter('veg')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-1.5 ${
-                      vegFilter === 'veg' ? 'bg-green-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 border border-green-700 inline-block flex-shrink-0"></span>
-                    Veg Only
-                  </button>
-                  <button
-                    onClick={() => setVegFilter('nonveg')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-1.5 ${
-                      vegFilter === 'nonveg' ? 'bg-red-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-red-700 inline-block flex-shrink-0"></span>
-                    Non-Veg Only
-                  </button>
+            {/* ── Dietary preference (deliberately keeps veg/non-veg colours) ── */}
+            <section className="qrd-card p-5 sm:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-9 w-9 rounded-xl flex items-center justify-center qrd-chip">
+                  <Leaf className="h-4.5 w-4.5" />
                 </div>
+                <h2 className="text-lg qrd-title">Dietary preference</h2>
               </div>
-            </div>
 
-            {/* Categories */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <button
+                  onClick={() => setVegFilter('all')}
+                  className={`qrd-pill flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium ${
+                    vegFilter === 'all' ? 'qrd-pill-on' : 'qrd-pill-off'
+                  }`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden xs:inline sm:inline">All items</span>
+                </button>
+
+                <button
+                  onClick={() => setVegFilter('veg')}
+                  className={`qrd-pill flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium border ${
+                    vegFilter === 'veg'
+                      ? 'bg-green-600 text-white border-green-600 shadow-[0_8px_18px_-10px_#16a34a]'
+                      : 'bg-green-50 text-green-700 border-green-100 hover:bg-green-100'
+                  }`}
+                >
+                  <Leaf className="h-4 w-4" />
+                  <span>Veg</span>
+                </button>
+
+                <button
+                  onClick={() => setVegFilter('nonveg')}
+                  className={`qrd-pill flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium border ${
+                    vegFilter === 'nonveg'
+                      ? 'bg-red-600 text-white border-red-600 shadow-[0_8px_18px_-10px_#dc2626]'
+                      : 'bg-red-50 text-red-700 border-red-100 hover:bg-red-100'
+                  }`}
+                >
+                  <Drumstick className="h-4 w-4" />
+                  <span>Non-veg</span>
+                </button>
+              </div>
+            </section>
+
+            {/* ── Categories ── */}
             {categories.length > 0 && (
-              <div className="overflow-x-auto">
-                <div className="flex gap-2 pb-2">
+              <div className="overflow-x-auto -mx-1 px-1">
+                <div className="flex gap-2 pb-1">
                   {categories.map((cat, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-6 py-3 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                        selectedCategory === cat
-                          ? 'bg-blue-600 text-white shadow-lg'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      className={`qrd-pill px-5 py-2.5 text-sm font-semibold whitespace-nowrap ${
+                        selectedCategory === cat ? 'qrd-pill-on' : 'qrd-pill-off'
                       }`}
-                    >{cat}</button>
+                    >
+                      {cat}
+                    </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Menu Items */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Menu</h2>
+            {/* ── Menu ── */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-9 w-9 rounded-xl flex items-center justify-center qrd-chip">
+                  <ChefHat className="h-4.5 w-4.5" />
+                </div>
+                <h2 className="text-xl qrd-title">Menu</h2>
+              </div>
 
               {filteredMenuItems.length === 0 ? (
-                <div className="card text-center py-12">
-                  <p className="text-gray-600">No items available in this category</p>
+                <div className="qrd-card p-12 text-center">
+                  <UtensilsCrossed className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--brand-line)' }} />
+                  <p className="font-semibold text-gray-700">Nothing here yet</p>
+                  <p className="text-sm text-gray-500 mt-1">Try another category or filter.</p>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {filteredMenuItems.map(item => (
-                    <div key={item._id} className="card hover:shadow-lg transition-shadow">
-                      <div className="flex gap-4 mb-3">
-                        {item.image && (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="font-semibold">{item.name}</h3>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              item.veg ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {item.veg ? '🟢 Veg' : '🔴 Non-Veg'}
-                            </span>
-                          </div>
-                          {item.description && (
-                            <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {filteredMenuItems.map((item, idx) => {
+                    const inCart = cart.find(c => c._id === item._id);
+                    return (
+                      <div
+                        key={item._id}
+                        className="qrd-card qrd-item qrd-rise p-4 flex flex-col"
+                        style={{ animationDelay: `${Math.min(idx * 40, 320)}ms` }}
+                      >
+                        <div className="flex gap-4">
+                          {item.image && (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl flex-shrink-0"
+                            />
                           )}
-                          <p className="text-lg font-bold text-blue-600">₹{item.price}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-2 mb-1">
+                              <h3 className="font-semibold text-[15px] leading-snug">{item.name}</h3>
+                              <span
+                                className={`mt-1 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 ${
+                                  item.veg ? 'border-green-600' : 'border-red-600'
+                                }`}
+                                title={item.veg ? 'Veg' : 'Non-veg'}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${item.veg ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                              </span>
+                            </div>
+                            {item.description && (
+                              <p className="text-sm text-gray-500 line-clamp-2 mb-2">{item.description}</p>
+                            )}
+                            <p className="text-lg font-bold" style={{ color: 'var(--brand-deep)' }}>
+                              ₹{item.price}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          {inCart ? (
+                            <div
+                              className="flex items-center justify-between rounded-2xl p-1.5"
+                              style={{ background: 'var(--brand-soft)' }}
+                            >
+                              <button onClick={() => updateQuantity(item._id, -1)} className="qrd-step" aria-label="Remove one">
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <span className="font-bold text-sm" style={{ color: 'var(--brand-deep)' }}>
+                                {inCart.quantity} in cart
+                              </span>
+                              <button onClick={() => updateQuantity(item._id, 1)} className="qrd-step" aria-label="Add one">
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => addToCart(item)}
+                              className="qrd-cta w-full py-2.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Add to cart
+                            </button>
+                          )}
                         </div>
                       </div>
-
-                      {cart.find(cartItem => cartItem._id === item._id) ? (
-                        <div className="flex items-center justify-between bg-blue-50 rounded-lg p-2">
-                          <button onClick={() => updateQuantity(item._id, -1)} className="bg-white p-2 rounded-lg hover:bg-gray-100">
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="font-semibold">{cart.find(c => c._id === item._id).quantity}</span>
-                          <button onClick={() => updateQuantity(item._id, 1)} className="bg-white p-2 rounded-lg hover:bg-gray-100">
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="w-full btn-primary flex items-center justify-center gap-2"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add to Cart
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
-            </div>
+            </section>
           </div>
 
-          {/* Cart - Desktop */}
+          {/* ── Cart (desktop) ── */}
           <div className="hidden lg:block">
-            <div className="card sticky top-24">
+            <div className="qrd-card p-5 sticky top-24">
               <CartSummary
                 cart={cart}
                 updateQuantity={updateQuantity}
@@ -702,13 +1032,19 @@ export default function CustomerOrder() {
         </div>
       </div>
 
-      {/* Cart Modal - Mobile */}
+      {/* ── Cart (mobile sheet) ── */}
       {showCart && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden">
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 lg:hidden flex items-end">
+          <div className="bg-white w-full rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto qrd-rise">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Your Cart</h2>
-              <button onClick={() => setShowCart(false)} className="text-gray-500">✕</button>
+              <h2 className="text-xl qrd-title">Your order</h2>
+              <button
+                onClick={() => setShowCart(false)}
+                className="h-9 w-9 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center"
+                aria-label="Close cart"
+              >
+                ✕
+              </button>
             </div>
             <CartSummary
               cart={cart}
@@ -728,60 +1064,75 @@ export default function CustomerOrder() {
 function CartSummary({ cart, updateQuantity, removeFromCart, getTotal, handleCheckout, placingOrder }) {
   if (cart.length === 0) {
     return (
-      <div className="text-center py-8">
-        <ShoppingCart className="h-16 w-16 text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-600">Your cart is empty</p>
-        <p className="text-sm text-gray-500 mt-2">Add items from the menu</p>
+      <div className="text-center py-10">
+        <div
+          className="h-20 w-20 rounded-3xl mx-auto mb-4 flex items-center justify-center"
+          style={{ background: 'var(--brand-soft)' }}
+        >
+          <ShoppingCart className="h-9 w-9" style={{ color: 'var(--brand)' }} />
+        </div>
+        <p className="font-semibold text-gray-800">Your cart is empty</p>
+        <p className="text-sm text-gray-500 mt-1">Add something from the menu to get started.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Your Order</h2>
+      <h2 className="text-xl qrd-title hidden lg:block">Your order</h2>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      <div className="space-y-3 max-h-[22rem] overflow-y-auto pr-1">
         {cart.map(item => (
-          <div key={item._id} className="bg-gray-50 rounded-lg p-3">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1">
-                <h4 className="font-semibold">{item.name}</h4>
-                <p className="text-sm text-gray-600">₹{item.price} each</p>
+          <div key={item._id} className="rounded-2xl p-3.5" style={{ background: '#FAF9F8' }}>
+            <div className="flex justify-between items-start gap-3 mb-3">
+              <div className="min-w-0">
+                <h4 className="font-semibold text-[15px] truncate">{item.name}</h4>
+                <p className="text-xs text-gray-500 mt-0.5">₹{item.price} each</p>
               </div>
-              <button onClick={() => removeFromCart(item._id)} className="text-red-500 hover:text-red-700">
+              <button
+                onClick={() => removeFromCart(item._id)}
+                className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                aria-label={`Remove ${item.name}`}
+              >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button onClick={() => updateQuantity(item._id, -1)} className="bg-white p-1 rounded hover:bg-gray-100">
-                  <Minus className="h-4 w-4" />
+              <div className="flex items-center gap-2.5">
+                <button onClick={() => updateQuantity(item._id, -1)} className="qrd-step" aria-label="Remove one">
+                  <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="font-semibold">{item.quantity}</span>
-                <button onClick={() => updateQuantity(item._id, 1)} className="bg-white p-1 rounded hover:bg-gray-100">
-                  <Plus className="h-4 w-4" />
+                <span className="font-bold text-sm w-5 text-center">{item.quantity}</span>
+                <button onClick={() => updateQuantity(item._id, 1)} className="qrd-step" aria-label="Add one">
+                  <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className="font-semibold">₹{(item.price * item.quantity).toFixed(2)}</span>
+              <span className="font-bold">₹{(item.price * item.quantity).toFixed(2)}</span>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="border-t pt-4">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-lg font-semibold">Total</span>
-          <span className="text-2xl font-bold text-blue-600">₹{getTotal().toFixed(2)}</span>
+      <div className="pt-4 border-t border-dashed border-[#E8E6E2]">
+        <div className="flex justify-between items-baseline mb-4">
+          <span className="text-sm font-medium text-gray-500">Total</span>
+          <span className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--brand-deep)' }}>
+            ₹{getTotal().toFixed(2)}
+          </span>
         </div>
 
         <button
           onClick={handleCheckout}
           disabled={placingOrder}
-          className="w-full btn-primary py-3 text-lg disabled:opacity-50"
+          className="qrd-cta w-full py-4 rounded-2xl font-bold text-base"
         >
-          {placingOrder ? 'Processing…' : 'Proceed to Payment'}
+          {placingOrder ? 'Processing…' : 'Proceed to payment'}
         </button>
+
+        <p className="text-[11px] text-gray-400 text-center mt-3">
+          Your order reaches the kitchen once payment is confirmed.
+        </p>
       </div>
     </div>
   );
