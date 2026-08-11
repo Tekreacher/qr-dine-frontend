@@ -738,8 +738,12 @@ export default function CustomerOrder() {
       )}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-[#F0EEEA] relative overflow-hidden">
-        <HeaderDoodles />
+      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-[#F0EEEA] relative">
+        {/* Doodles get their own clipping box — putting overflow-hidden on the
+            header itself would cut off the profile dropdown. */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <HeaderDoodles />
+        </div>
         <div className="relative max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {restaurant.logo ? (
@@ -785,7 +789,7 @@ export default function CustomerOrder() {
               onClick={() => setShowCart(!showCart)}
               className="qrd-cta qrd-pill flex items-center gap-2 px-4 sm:px-5 py-2.5 font-semibold text-sm"
             >
-              <ShoppingCart className="h-4.5 w-4.5" />
+              <ShoppingCart className="h-[18px] w-[18px]" />
               <span className="hidden sm:inline">Cart</span>
               <span
                 key={cartCount}
@@ -806,7 +810,7 @@ export default function CustomerOrder() {
             <section className="qrd-card p-5 sm:p-6">
               <div className="flex items-center gap-3 mb-5">
                 <div className="h-9 w-9 rounded-xl flex items-center justify-center qrd-chip">
-                  <User className="h-4.5 w-4.5" />
+                  <User className="h-[18px] w-[18px]" />
                 </div>
                 <h2 className="text-lg qrd-title">Your details</h2>
               </div>
@@ -868,7 +872,7 @@ export default function CustomerOrder() {
             <section className="qrd-card p-5 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-9 w-9 rounded-xl flex items-center justify-center qrd-chip">
-                  <Leaf className="h-4.5 w-4.5" />
+                  <Leaf className="h-[18px] w-[18px]" />
                 </div>
                 <h2 className="text-lg qrd-title">Dietary preference</h2>
               </div>
@@ -881,7 +885,7 @@ export default function CustomerOrder() {
                   }`}
                 >
                   <LayoutGrid className="h-4 w-4" />
-                  <span className="hidden xs:inline sm:inline">All items</span>
+                  <span className="hidden sm:inline">All items</span>
                 </button>
 
                 <button
@@ -934,7 +938,7 @@ export default function CustomerOrder() {
               <ChefHatDoodle className="absolute right-2 -top-2 w-16 h-16 opacity-15 pointer-events-none hidden sm:block" />
               <div className="relative flex items-center gap-3 mb-4">
                 <div className="h-9 w-9 rounded-xl flex items-center justify-center qrd-chip">
-                  <ChefHat className="h-4.5 w-4.5" />
+                  <ChefHat className="h-[18px] w-[18px]" />
                 </div>
                 <h2 className="text-xl qrd-title">Menu</h2>
               </div>
@@ -1214,7 +1218,7 @@ function EmptyCartArt() {
         {/* dotted arrow pointing down to the dish */}
         <svg
           viewBox="0 0 120 70"
-          className="mx-auto mt-3 w-24"
+          className="mx-auto mt-3 w-20 sm:w-24"
           aria-hidden="true"
           style={{ color: 'var(--brand)', opacity: 0.6 }}
           fill="none"
@@ -1227,7 +1231,7 @@ function EmptyCartArt() {
           <path d="M64 54l8 8 10-6" />
         </svg>
 
-        <ClocheOnHand className="w-56 mx-auto -mb-2" />
+        <ClocheOnHand className="w-full max-w-[14rem] mx-auto -mb-2" />
       </div>
     </div>
   );
@@ -1236,7 +1240,7 @@ function EmptyCartArt() {
 /** Empty-menu scene: a lone cloche with leaves. */
 function EmptyMenuArt() {
   return (
-    <svg viewBox="0 0 200 130" className="w-44 mx-auto" aria-hidden="true" style={{ color: 'var(--brand)' }}>
+    <svg viewBox="0 0 200 130" className="w-full max-w-[11rem] mx-auto" aria-hidden="true" style={{ color: 'var(--brand)' }}>
       <g fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity=".7">
         {/* knob */}
         <circle cx="100" cy="34" r="5" />
