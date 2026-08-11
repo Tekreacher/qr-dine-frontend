@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Plus, Minus, Trash2, Store, MapPin, Phone,
-  User, Leaf, Drumstick, LayoutGrid, UtensilsCrossed, Hash, ChefHat
+  User, Leaf, Drumstick, LayoutGrid, Hash, ChefHat
 } from 'lucide-react';
 import api from '../api/api';
 import CustomerProfile from '../components/CustomerProfile';
@@ -738,8 +738,9 @@ export default function CustomerOrder() {
       )}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-[#F0EEEA]">
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-[#F0EEEA] relative overflow-hidden">
+        <HeaderDoodles />
+        <div className="relative max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {restaurant.logo ? (
               <img
@@ -929,8 +930,9 @@ export default function CustomerOrder() {
             )}
 
             {/* ── Menu ── */}
-            <section>
-              <div className="flex items-center gap-3 mb-4">
+            <section className="relative">
+              <ChefHatDoodle className="absolute right-2 -top-2 w-16 h-16 opacity-15 pointer-events-none hidden sm:block" />
+              <div className="relative flex items-center gap-3 mb-4">
                 <div className="h-9 w-9 rounded-xl flex items-center justify-center qrd-chip">
                   <ChefHat className="h-4.5 w-4.5" />
                 </div>
@@ -938,10 +940,10 @@ export default function CustomerOrder() {
               </div>
 
               {filteredMenuItems.length === 0 ? (
-                <div className="qrd-card p-12 text-center">
-                  <UtensilsCrossed className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--brand-line)' }} />
-                  <p className="font-semibold text-gray-700">Nothing here yet</p>
-                  <p className="text-sm text-gray-500 mt-1">Try another category or filter.</p>
+                <div className="qrd-card py-10 px-6 text-center">
+                  <EmptyMenuArt />
+                  <p className="font-semibold text-gray-800 mt-4">No items available in this category</p>
+                  <p className="text-sm text-gray-500 mt-1">Try selecting a different category</p>
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -1061,20 +1063,201 @@ export default function CustomerOrder() {
   );
 }
 
+
+/* ===========================================================================
+   ILLUSTRATIONS
+   Hand-drawn SVG scenes that inherit the restaurant's brand colour through
+   CSS variables, so they retint themselves for every restaurant.
+   =========================================================================== */
+
+/** Faint food doodles scattered behind the header. Purely atmospheric. */
+function HeaderDoodles() {
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 w-full h-full"
+      viewBox="0 0 1200 120"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      style={{ opacity: 0.13, color: 'var(--brand)' }}
+    >
+      <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        {/* left leaves */}
+        <path d="M28 30c14-10 30-6 34 6-12 9-27 7-34-6Z" />
+        <path d="M30 34c10 1 18 5 24 12" strokeWidth="1.5" />
+        <path d="M18 74c12-9 26-5 29 5-10 8-23 6-29-5Z" />
+        {/* left sprig */}
+        <path d="M96 92c8-14 8-26 4-36" strokeWidth="1.5" />
+        <path d="M100 70c-7-2-11-7-12-13M100 78c7-1 12-5 14-11" strokeWidth="1.5" />
+        {/* right citrus */}
+        <circle cx="1150" cy="46" r="20" />
+        <path d="M1150 26v40M1130 46h40M1136 32l28 28M1164 32l-28 28" strokeWidth="1.2" />
+        {/* right chilli */}
+        <path d="M1092 88c14-4 24-14 26-27-14 1-25 10-26 27Z" />
+        <path d="M1118 61c3-6 8-9 14-9" strokeWidth="1.5" />
+        {/* right leaves */}
+        <path d="M1060 24c12-8 25-5 28 5-10 8-22 6-28-5Z" />
+      </g>
+    </svg>
+  );
+}
+
+/** Outlined chef's hat that sits beside the Menu heading. */
+function ChefHatDoodle({ className = '' }) {
+  return (
+    <svg
+      viewBox="0 0 120 100"
+      className={className}
+      aria-hidden="true"
+      style={{ color: 'var(--brand)' }}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M32 62c-12-2-20-12-20-24 0-13 11-23 24-22 4-10 14-16 24-16s20 6 24 16c13-1 24 9 24 22 0 12-8 22-20 24" />
+      <path d="M32 62v22c0 3 2 5 5 5h46c3 0 5-2 5-5V62" />
+      <path d="M32 74h56" strokeWidth="1.6" />
+      <path d="M48 62V44M60 62V40M72 62V44" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+/** Domed serving cloche on a hand — the centrepiece of the empty states. */
+function ClocheOnHand({ className = '' }) {
+  return (
+    <svg viewBox="0 0 260 190" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id="qrdDome" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--brand-soft)" />
+          <stop offset="55%" stopColor="var(--brand)" />
+          <stop offset="100%" stopColor="var(--brand-dark)" />
+        </linearGradient>
+      </defs>
+
+      {/* knob */}
+      <circle cx="130" cy="42" r="7" fill="var(--brand-dark)" />
+      <path d="M130 49v8" stroke="var(--brand-dark)" strokeWidth="5" strokeLinecap="round" />
+
+      {/* dome */}
+      <path d="M44 122c0-47 39-66 86-66s86 19 86 66Z" fill="url(#qrdDome)" />
+      {/* highlight */}
+      <path d="M74 112c2-28 22-42 44-46" stroke="#fff" strokeOpacity=".45" strokeWidth="7" strokeLinecap="round" fill="none" />
+
+      {/* tray */}
+      <rect x="30" y="122" width="200" height="13" rx="6.5" fill="var(--brand-deep)" />
+
+      {/* hand + sleeve */}
+      <path d="M150 140c14-3 30-1 44 5 7 3 12 8 15 15l-9 5c-4-6-9-10-16-12-13-4-26-4-39-1Z" fill="#E2574C" />
+      <path d="M196 150c9 2 17 7 22 15l24 25h-31l-19-22Z" fill="#C6453B" />
+      <path d="M118 133c-9 1-17 5-22 12" stroke="var(--brand-deep)" strokeWidth="0" />
+    </svg>
+  );
+}
+
+/** Empty-cart scene: cart, sparkles, a nudging arrow, and the cloche on a dune. */
+function EmptyCartArt() {
+  return (
+    <div className="relative w-full overflow-hidden rounded-2xl" style={{ background: 'var(--brand-tint)' }}>
+      {/* faint food doodles in the dune */}
+      <svg
+        viewBox="0 0 320 120"
+        className="absolute bottom-0 left-0 w-full"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d="M0 54c46-26 92-26 138 0s92 26 182 0v66H0Z" fill="var(--brand-soft)" />
+      </svg>
+
+      <svg
+        viewBox="0 0 320 120"
+        className="absolute bottom-0 left-0 w-full"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        style={{ opacity: 0.35, color: 'var(--brand)' }}
+      >
+        <g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M26 92c8-6 17-4 19 3-7 5-15 4-19-3Z" />
+          <circle cx="62" cy="103" r="6" />
+          <path d="M96 100c9-3 15-9 16-17-9 1-16 7-16 17Z" />
+          <circle cx="268" cy="94" r="7" />
+          <path d="M292 106c8-5 16-3 18 3" />
+          <path d="M232 108c7-6 15-5 18 1" />
+        </g>
+      </svg>
+
+      <div className="relative px-6 pt-8">
+        {/* cart + sparkles */}
+        <div className="relative mx-auto w-fit">
+          <svg width="86" height="86" viewBox="0 0 90 90" aria-hidden="true" style={{ color: 'var(--brand)' }}>
+            <g fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 16h9l10 36h34l8-24H30" />
+              <circle cx="39" cy="68" r="6" />
+              <circle cx="65" cy="68" r="6" />
+            </g>
+            {/* sparkles */}
+            <g fill="var(--brand)">
+              <path d="M76 14l2.6 6.4L85 23l-6.4 2.6L76 32l-2.6-6.4L67 23l6.4-2.6Z" opacity=".85" />
+              <path d="M14 40l1.8 4.4L20 46l-4.2 1.6L14 52l-1.8-4.4L8 46l4.2-1.6Z" opacity=".6" />
+              <path d="M84 44l1.4 3.4L89 49l-3.6 1.4L84 54l-1.4-3.6L79 49l3.6-1.6Z" opacity=".5" />
+            </g>
+          </svg>
+        </div>
+
+        <p className="text-center font-bold text-lg mt-4" style={{ color: '#2A2724' }}>
+          Your cart is empty
+        </p>
+        <p className="text-center text-sm text-gray-500 mt-1">
+          Add items from the menu
+        </p>
+
+        {/* dotted arrow pointing down to the dish */}
+        <svg
+          viewBox="0 0 120 70"
+          className="mx-auto mt-3 w-24"
+          aria-hidden="true"
+          style={{ color: 'var(--brand)', opacity: 0.6 }}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        >
+          <path d="M14 8c26 2 44 14 54 34" strokeDasharray="1 9" />
+          <path d="M60 30c8 6 12 14 12 24" strokeDasharray="1 9" />
+          <path d="M64 54l8 8 10-6" />
+        </svg>
+
+        <ClocheOnHand className="w-56 mx-auto -mb-2" />
+      </div>
+    </div>
+  );
+}
+
+/** Empty-menu scene: a lone cloche with leaves. */
+function EmptyMenuArt() {
+  return (
+    <svg viewBox="0 0 200 130" className="w-44 mx-auto" aria-hidden="true" style={{ color: 'var(--brand)' }}>
+      <g fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity=".7">
+        {/* knob */}
+        <circle cx="100" cy="34" r="5" />
+        <path d="M100 39v7" />
+        {/* dome */}
+        <path d="M40 92c0-33 27-46 60-46s60 13 60 46" />
+        {/* tray */}
+        <path d="M28 92h144" strokeWidth="5" />
+        {/* steam */}
+        <path d="M84 26c-4-5-4-10 0-15M116 26c-4-5-4-10 0-15" strokeWidth="2.4" opacity=".55" />
+        {/* leaves */}
+        <path d="M34 108c10-7 20-5 23 4-8 6-18 5-23-4Z" strokeWidth="2.2" />
+        <path d="M166 108c-10-7-20-5-23 4 8 6 18 5 23-4Z" strokeWidth="2.2" />
+      </g>
+    </svg>
+  );
+}
+
 function CartSummary({ cart, updateQuantity, removeFromCart, getTotal, handleCheckout, placingOrder }) {
   if (cart.length === 0) {
-    return (
-      <div className="text-center py-10">
-        <div
-          className="h-20 w-20 rounded-3xl mx-auto mb-4 flex items-center justify-center"
-          style={{ background: 'var(--brand-soft)' }}
-        >
-          <ShoppingCart className="h-9 w-9" style={{ color: 'var(--brand)' }} />
-        </div>
-        <p className="font-semibold text-gray-800">Your cart is empty</p>
-        <p className="text-sm text-gray-500 mt-1">Add something from the menu to get started.</p>
-      </div>
-    );
+    return <EmptyCartArt />;
   }
 
   return (
