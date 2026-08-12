@@ -57,7 +57,7 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
       </button>
 
       {showMenu && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+        <div className="fixed left-3 right-3 top-[4.75rem] w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden max-h-[calc(100vh-6rem)] overflow-y-auto">
 
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-4">

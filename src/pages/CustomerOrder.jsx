@@ -677,6 +677,24 @@ export default function CustomerOrder() {
         .qrd-rise { animation: qrdRise .32s ease both; }
         @keyframes qrdRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
+        /* Hide the scrollbar on the category strip without losing scrolling */
+        .qrd-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .qrd-scroll::-webkit-scrollbar { display: none; }
+
+        /* Long unbroken words (restaurant or dish names) must never force
+           horizontal page scroll on a narrow phone or a folded device. */
+        .qrd-root h1, .qrd-root h2, .qrd-root h3, .qrd-root h4 { overflow-wrap: anywhere; }
+
+        /* Very narrow screens (folded phones, ~280px) */
+        @media (max-width: 340px) {
+          .qrd-root .qrd-input { padding-left: 2.25rem; font-size: .9rem; }
+          .qrd-root .qrd-step { width: 30px; height: 30px; }
+          /* The city line is secondary — drop it so the restaurant name gets
+             the full width instead of being squeezed to a few characters. */
+          .qrd-head-sub { display: none; }
+          .qrd-head-name { font-size: .95rem; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .qrd-cta, .qrd-pill, .qrd-item, .qrd-step, .qrd-rise, .qrd-badge-pop { animation: none !important; transition: none !important; }
           .qrd-cta:hover { transform: none; }
@@ -744,29 +762,29 @@ export default function CustomerOrder() {
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <HeaderDoodles />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="relative max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             {restaurant.logo ? (
               <img
                 src={restaurant.logo}
                 alt={restaurant.name}
-                className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl object-cover flex-shrink-0"
+                className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl object-cover flex-shrink-0"
                 style={{ boxShadow: '0 0 0 2px #fff, 0 0 0 3.5px var(--brand-line)' }}
               />
             ) : (
               <div
-                className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{ background: 'var(--brand-soft)' }}
               >
                 <Store className="h-5 w-5" style={{ color: 'var(--brand-deep)' }} />
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl qrd-title truncate leading-tight">
+              <h1 className="qrd-head-name text-base sm:text-2xl qrd-title truncate leading-tight">
                 {restaurant.name}
               </h1>
               {restaurant.address && (restaurant.address.city || restaurant.address.state) && (
-                <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 truncate">
+                <p className="qrd-head-sub text-xs sm:text-sm text-gray-500 flex items-center gap-1 truncate">
                   <MapPin className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--brand)' }} />
                   <span className="truncate">
                     {[restaurant.address.city, restaurant.address.state].filter(Boolean).join(', ')}
@@ -787,7 +805,7 @@ export default function CustomerOrder() {
             />
             <button
               onClick={() => setShowCart(!showCart)}
-              className="qrd-cta qrd-pill flex items-center gap-2 px-4 sm:px-5 py-2.5 font-semibold text-sm"
+              className="qrd-cta qrd-pill flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 font-semibold text-sm flex-shrink-0"
             >
               <ShoppingCart className="h-[18px] w-[18px]" />
               <span className="hidden sm:inline">Cart</span>
@@ -802,7 +820,7 @@ export default function CustomerOrder() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 pb-28 lg:pb-6">
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-5">
 
@@ -885,7 +903,7 @@ export default function CustomerOrder() {
                   }`}
                 >
                   <LayoutGrid className="h-4 w-4" />
-                  <span className="hidden sm:inline">All items</span>
+                  <span><span className="sm:hidden">All</span><span className="hidden sm:inline">All items</span></span>
                 </button>
 
                 <button
@@ -916,7 +934,7 @@ export default function CustomerOrder() {
 
             {/* ── Categories ── */}
             {categories.length > 0 && (
-              <div className="overflow-x-auto -mx-1 px-1">
+              <div className="qrd-scroll overflow-x-auto -mx-1 px-1">
                 <div className="flex gap-2 pb-1">
                   {categories.map((cat, index) => (
                     <button
@@ -964,7 +982,9 @@ export default function CustomerOrder() {
                             <img
                               src={item.image}
                               alt={item.name}
-                              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl flex-shrink-0"
+                              loading="lazy"
+                              decoding="async"
+                              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl flex-shrink-0 bg-gray-100"
                             />
                           )}
                           <div className="flex-1 min-w-0">
@@ -1038,10 +1058,39 @@ export default function CustomerOrder() {
         </div>
       </div>
 
+      {/* ── Sticky cart bar (mobile only) ── */}
+      {cart.length > 0 && !showCart && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 lg:hidden px-3 pb-3 pt-2"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+        >
+          <button
+            onClick={() => setShowCart(true)}
+            className="qrd-cta w-full rounded-2xl px-4 py-3.5 flex items-center justify-between gap-3"
+          >
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span className="h-8 w-8 rounded-xl bg-white/25 flex items-center justify-center flex-shrink-0">
+                <ShoppingCart className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-semibold truncate">
+                {cartCount} {cartCount === 1 ? 'item' : 'items'}
+              </span>
+            </span>
+            <span className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-base font-bold">₹{getTotal().toFixed(2)}</span>
+              <span className="text-sm font-semibold opacity-90">View cart</span>
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* ── Cart (mobile sheet) ── */}
       {showCart && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 lg:hidden flex items-end">
-          <div className="bg-white w-full rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto qrd-rise">
+          <div
+            className="bg-white w-full rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto qrd-rise"
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl qrd-title">Your order</h2>
               <button
