@@ -580,6 +580,8 @@ export default function CustomerOrder() {
     <div className="qrd-root min-h-screen" style={themeVars}>
       <style>{`
         .qrd-root {
+          overflow-x: hidden;
+          max-width: 100vw;
           background:
             radial-gradient(1200px 500px at 15% -10%, var(--brand-tint) 0%, transparent 60%),
             radial-gradient(900px 450px at 100% 0%, var(--brand-tint) 0%, transparent 55%),
@@ -756,13 +758,13 @@ export default function CustomerOrder() {
       )}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-[#F0EEEA] relative">
+      <header className="sticky top-0 z-30 w-full bg-white/85 backdrop-blur-md border-b border-[#F0EEEA] relative">
         {/* Doodles get their own clipping box — putting overflow-hidden on the
             header itself would cut off the profile dropdown. */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <HeaderDoodles />
         </div>
-        <div className="relative max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3">
+        <div className="relative w-full max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             {restaurant.logo ? (
               <img
@@ -794,7 +796,7 @@ export default function CustomerOrder() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
             <CustomerProfile
               customerId={customerId}
               customerName={customerName}
