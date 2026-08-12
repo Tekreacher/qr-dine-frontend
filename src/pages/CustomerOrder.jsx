@@ -579,10 +579,6 @@ export default function CustomerOrder() {
   return (
     <div className="qrd-root min-h-screen" style={themeVars}>
       <style>{`
-        /* Safe place for the overflow guard: on the document itself.
-           Putting it on .qrd-root would break the sticky header. */
-        html, body { overflow-x: hidden; }
-
         .qrd-root {
           background:
             radial-gradient(1200px 500px at 15% -10%, var(--brand-tint) 0%, transparent 60%),
@@ -591,11 +587,18 @@ export default function CustomerOrder() {
           color: #1B1B1A;
         }
         .qrd-card {
+          max-width: 100%;
           background: #FFFFFF;
           border: 1px solid #F0EEEA;
           border-radius: 20px;
           box-shadow: 0 1px 2px rgba(16,15,14,.04), 0 8px 24px -12px rgba(16,15,14,.10);
         }
+        /* Nothing inside the ordering page may exceed its container. This is
+           a structural guarantee rather than a clip: elements shrink instead
+           of pushing the page sideways. */
+        .qrd-root * { max-width: 100%; }
+        .qrd-root img, .qrd-root svg { height: auto; }
+
         .qrd-title {
           font-weight: 700;
           letter-spacing: -0.02em;
@@ -825,8 +828,8 @@ export default function CustomerOrder() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6 pb-28 lg:pb-6">
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-5">
+        <div className="grid lg:grid-cols-3 gap-6 min-w-0">
+          <div className="lg:col-span-2 space-y-5 min-w-0">
 
             {/* ── Your details ── */}
             <section className="qrd-card p-5 sm:p-6">
@@ -837,7 +840,7 @@ export default function CustomerOrder() {
                 <h2 className="text-lg qrd-title">Your details</h2>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-3 gap-4 min-w-0">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Table number <span style={{ color: 'var(--brand)' }}>*</span>
@@ -938,7 +941,7 @@ export default function CustomerOrder() {
 
             {/* ── Categories ── */}
             {categories.length > 0 && (
-              <div className="qrd-scroll overflow-x-auto -mx-1 px-1">
+              <div className="qrd-scroll overflow-x-auto w-full">
                 <div className="flex gap-2 pb-1">
                   {categories.map((cat, index) => (
                     <button
@@ -972,7 +975,7 @@ export default function CustomerOrder() {
                   <p className="text-sm text-gray-500 mt-1">Try selecting a different category</p>
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-4 min-w-0">
                   {filteredMenuItems.map((item, idx) => {
                     const inCart = cart.find(c => c._id === item._id);
                     return (
