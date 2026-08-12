@@ -579,9 +579,11 @@ export default function CustomerOrder() {
   return (
     <div className="qrd-root min-h-screen" style={themeVars}>
       <style>{`
+        /* Safe place for the overflow guard: on the document itself.
+           Putting it on .qrd-root would break the sticky header. */
+        html, body { overflow-x: hidden; }
+
         .qrd-root {
-          overflow-x: hidden;
-          max-width: 100vw;
           background:
             radial-gradient(1200px 500px at 15% -10%, var(--brand-tint) 0%, transparent 60%),
             radial-gradient(900px 450px at 100% 0%, var(--brand-tint) 0%, transparent 55%),
@@ -897,39 +899,39 @@ export default function CustomerOrder() {
                 <h2 className="text-lg qrd-title">Dietary preference</h2>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setVegFilter('all')}
-                  className={`qrd-pill flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium ${
+                  className={`qrd-pill min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 text-sm font-medium ${
                     vegFilter === 'all' ? 'qrd-pill-on' : 'qrd-pill-off'
                   }`}
                 >
-                  <LayoutGrid className="h-4 w-4" />
-                  <span><span className="sm:hidden">All</span><span className="hidden sm:inline">All items</span></span>
+                  <LayoutGrid className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate"><span className="sm:hidden">All</span><span className="hidden sm:inline">All items</span></span>
                 </button>
 
                 <button
                   onClick={() => setVegFilter('veg')}
-                  className={`qrd-pill flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium border ${
+                  className={`qrd-pill min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 text-sm font-medium border ${
                     vegFilter === 'veg'
                       ? 'bg-green-600 text-white border-green-600 shadow-[0_8px_18px_-10px_#16a34a]'
                       : 'bg-green-50 text-green-700 border-green-100 hover:bg-green-100'
                   }`}
                 >
-                  <Leaf className="h-4 w-4" />
-                  <span>Veg</span>
+                  <Leaf className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Veg</span>
                 </button>
 
                 <button
                   onClick={() => setVegFilter('nonveg')}
-                  className={`qrd-pill flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium border ${
+                  className={`qrd-pill min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 text-sm font-medium border ${
                     vegFilter === 'nonveg'
                       ? 'bg-red-600 text-white border-red-600 shadow-[0_8px_18px_-10px_#dc2626]'
                       : 'bg-red-50 text-red-700 border-red-100 hover:bg-red-100'
                   }`}
                 >
-                  <Drumstick className="h-4 w-4" />
-                  <span>Non-veg</span>
+                  <Drumstick className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Non-veg</span>
                 </button>
               </div>
             </section>

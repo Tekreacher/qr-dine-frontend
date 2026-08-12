@@ -243,7 +243,14 @@ export default function MenuEditor() {
               />
             </div>
 
-            {/* Price */}
+            {/*
+              Price.
+              NOTE: scrolling the page while the cursor sits over a focused
+              number input makes the browser nudge its value by `step` (0.01).
+              That is how a price typed as 800 silently became 799.97.
+              onWheel -> blur() removes focus so the wheel scrolls the page
+              instead of editing the price.
+            */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Price (₹) *
@@ -252,6 +259,7 @@ export default function MenuEditor() {
                 type="number"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                onWheel={(e) => e.currentTarget.blur()}
                 className="input-field"
                 placeholder="299"
                 min="0"
