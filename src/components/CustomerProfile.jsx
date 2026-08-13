@@ -3,7 +3,7 @@ import { User, History, FileText, ChevronDown, Clock, AlertCircle, ExternalLink,
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
-export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, uniqueCode, onLogout }) {
+export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, activeOrderCount = 0, uniqueCode, onLogout }) {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
@@ -19,11 +19,17 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
 
   const handleCheckOrderStatus = () => {
     setShowMenu(false);
-    if (currentOrderId) {
-      navigate(`/order-status/${currentOrderId}?customerId=${customerId || ''}&uniqueCode=${uniqueCode || ''}`);
-    } else {
-      alert('No active order found. Place an order first to track its status!');
+    if (!customerId) {
+      alert('Place an order first to start tracking your status!');
+      return;
     }
+    // No specific orderId in the path — the Order Status page fetches this
+    // customer's full list of active orders itself and shows every one of
+    // them (with an accurate empty state if there truly are none). Gating
+    // this on a single stored "current order" pointer was the bug: that
+    // pointer clears the moment ANY one order is completed, even while
+    // other orders the customer placed are still genuinely active.
+    navigate(`/order-status?customerId=${customerId}&uniqueCode=${uniqueCode || ''}`);
   };
 
   const handlePastOrders = () => {
@@ -89,10 +95,12 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
               <div className="flex-1">
                 <p className="font-semibold text-gray-800">Check Order Status</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {currentOrderId ? 'View your current order' : 'No active order'}
+                  {activeOrderCount > 0
+                    ? `${activeOrderCount} active order${activeOrderCount > 1 ? 's' : ''}`
+                    : 'No active order'}
                 </p>
               </div>
-              {currentOrderId && (
+              {activeOrderCount > 0 && (
                 <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 animate-pulse"></span>
               )}
             </button>

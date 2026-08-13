@@ -161,6 +161,12 @@ export default function CustomerOrder() {
   const [customerIsExisting, setCustomerIsExisting] = useState(false);
   const [categories, setCategories] = useState([]);
   const [currentOrderId, setCurrentOrderId] = useState(null);
+  // How many of this customer's orders are still active (paid/accepted,
+  // not yet completed). This — NOT currentOrderId — is what the profile
+  // dropdown's dot and "Check Order Status" link should reflect, since
+  // currentOrderId is a single legacy pointer that gets cleared the moment
+  // ANY one order is completed, even while other orders are still live.
+  const [activeOrderCount, setActiveOrderCount] = useState(0);
 
   // Phone lookup modal state
   const [showPhoneLookup, setShowPhoneLookup] = useState(false);
@@ -190,6 +196,13 @@ export default function CustomerOrder() {
         const cust = resp.data.customer;
         setCurrentOrderId(cust.currentOrderId || null);
         setCustomerIsExisting(cust.isExistingCustomer || false);
+      }
+      // Piggyback on the same 10s poll to keep the TRUE active-order count
+      // fresh — this is what actually decides whether "Check Order Status"
+      // has anything to show, independent of the legacy single pointer above.
+      const activeResp = await api.get(`/customer/${customerId}/active-orders`);
+      if (activeResp.data.success) {
+        setActiveOrderCount((activeResp.data.orders || []).length);
       }
     } catch (e) { /* ignore */ }
   };
@@ -814,6 +827,7 @@ export default function CustomerOrder() {
               customerName={customerName}
               isExistingCustomer={customerIsExisting}
               currentOrderId={currentOrderId}
+              activeOrderCount={activeOrderCount}
               uniqueCode={uniqueCode}
               onLogout={handleLogout}
             />

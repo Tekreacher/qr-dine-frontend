@@ -24,6 +24,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/menu/:uniqueCode" element={<CustomerOrder />} />
           <Route path="/order-status/:orderId" element={<OrderStatus />} />
+          <Route path="/order-status" element={<OrderStatus />} />
           <Route path="/bill/:orderId" element={<BillView />} />
           <Route path="/order/:orderId" element={<Orders />} />
           <Route path="/past-orders/:customerId" element={<PastOrders />} />
