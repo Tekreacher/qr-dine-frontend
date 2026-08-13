@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Plus, Minus, Trash2, Store, MapPin, Phone,
-  User, Leaf, Drumstick, LayoutGrid, Hash, ChefHat
+  User, Leaf, Drumstick, LayoutGrid, Hash, ChefHat, UtensilsCrossed
 } from 'lucide-react';
 import api from '../api/api';
 import CustomerProfile from '../components/CustomerProfile';
@@ -680,6 +680,8 @@ export default function CustomerOrder() {
           border: 1px solid #ECEAE6;
           transition: transform .12s ease, border-color .16s ease, color .16s ease;
         }
+        /* Smaller variant for compact contexts (menu card pill stepper) */
+        .qrd-step-sm { width: 28px; height: 28px; border-radius: 9px; }
         .qrd-step:hover { border-color: var(--brand); color: var(--brand); }
         .qrd-step:active { transform: scale(.9); }
 
@@ -986,65 +988,73 @@ export default function CustomerOrder() {
                     return (
                       <div
                         key={item._id}
-                        className="qrd-card qrd-item qrd-rise p-4 flex flex-col"
+                        className="qrd-card qrd-item qrd-rise p-3.5"
                         style={{ animationDelay: `${Math.min(idx * 40, 320)}ms` }}
                       >
-                        <div className="flex gap-4">
-                          {item.image && (
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              loading="lazy"
-                              decoding="async"
-                              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl flex-shrink-0 bg-gray-100"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-2 mb-1">
-                              <h3 className="font-semibold text-[15px] leading-snug">{item.name}</h3>
-                              <span
-                                className={`mt-1 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 ${
-                                  item.veg ? 'border-green-600' : 'border-red-600'
-                                }`}
-                                title={item.veg ? 'Veg' : 'Non-veg'}
-                              >
-                                <span className={`h-1.5 w-1.5 rounded-full ${item.veg ? 'bg-green-600' : 'bg-red-600'}`}></span>
-                              </span>
-                            </div>
-                            {item.description && (
-                              <p className="text-sm text-gray-500 line-clamp-2 mb-2">{item.description}</p>
+                        <div className="flex items-center gap-3">
+                          {/* Photo — left, Burger King style */}
+                          <div className="relative flex-shrink-0">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                loading="lazy"
+                                decoding="async"
+                                className="w-20 h-20 object-cover rounded-xl bg-gray-100"
+                              />
+                            ) : (
+                              <div className="w-20 h-20 rounded-xl flex items-center justify-center bg-gray-50 border border-gray-100">
+                                <UtensilsCrossed className="h-7 w-7 text-gray-300" />
+                              </div>
                             )}
-                            <p className="text-lg font-bold" style={{ color: 'var(--brand-deep)' }}>
+                            <span
+                              className={`absolute -top-1.5 -left-1.5 h-4 w-4 rounded-sm bg-white shadow-sm border flex items-center justify-center ${
+                                item.veg ? 'border-green-600' : 'border-red-600'
+                              }`}
+                              title={item.veg ? 'Veg' : 'Non-veg'}
+                            >
+                              <span className={`h-2 w-2 rounded-full ${item.veg ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                            </span>
+                          </div>
+
+                          {/* Name, description, price */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-[15px] leading-snug truncate">{item.name}</h3>
+                            {item.description && (
+                              <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{item.description}</p>
+                            )}
+                            <p className="text-base font-bold mt-1" style={{ color: 'var(--brand-deep)' }}>
                               ₹{item.price}
                             </p>
                           </div>
-                        </div>
 
-                        <div className="mt-4">
-                          {inCart ? (
-                            <div
-                              className="flex items-center justify-between rounded-2xl p-1.5"
-                              style={{ background: 'var(--brand-soft)' }}
-                            >
-                              <button onClick={() => updateQuantity(item._id, -1)} className="qrd-step" aria-label="Remove one">
-                                <Minus className="h-4 w-4" />
+                          {/* Compact action — pill "Add" button, or a stepper once it's in the cart */}
+                          <div className="flex-shrink-0">
+                            {inCart ? (
+                              <div
+                                className="flex items-center gap-1 rounded-full p-1"
+                                style={{ background: 'var(--brand-soft)' }}
+                              >
+                                <button onClick={() => updateQuantity(item._id, -1)} className="qrd-step qrd-step-sm" aria-label="Remove one">
+                                  <Minus className="h-3.5 w-3.5" />
+                                </button>
+                                <span className="font-bold text-sm w-4 text-center" style={{ color: 'var(--brand-deep)' }}>
+                                  {inCart.quantity}
+                                </span>
+                                <button onClick={() => updateQuantity(item._id, 1)} className="qrd-step qrd-step-sm" aria-label="Add one">
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => addToCart(item)}
+                                className="qrd-cta rounded-full font-bold text-sm px-4 py-2 flex items-center gap-1"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add
                               </button>
-                              <span className="font-bold text-sm" style={{ color: 'var(--brand-deep)' }}>
-                                {inCart.quantity} in cart
-                              </span>
-                              <button onClick={() => updateQuantity(item._id, 1)} className="qrd-step" aria-label="Add one">
-                                <Plus className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => addToCart(item)}
-                              className="qrd-cta w-full py-2.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2"
-                            >
-                              <Plus className="h-4 w-4" />
-                              Add to cart
-                            </button>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

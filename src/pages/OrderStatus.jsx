@@ -1,50 +1,83 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { CheckCircle, Clock, Package, Store, RefreshCw, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Clock, Package, Store, RefreshCw, ArrowLeft, ShoppingBag } from 'lucide-react';
 import api from '../api/api';
 import ThankYouModal from '../components/ThankYouModal';
 
 export default function OrderStatus() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showThankYou, setShowThankYou] = useState(false);
 
-  // Pull uniqueCode + customerId from URL query params (passed in after payment)
   const urlParams = new URLSearchParams(window.location.search);
   const customerId = urlParams.get('customerId');
   const uniqueCode = urlParams.get('uniqueCode');
+  const hasCustomerId = customerId && customerId !== 'null' && customerId !== 'undefined';
+
+  // The FULL list of the customer's still-active orders — this is what
+  // makes multi-order tracking possible. If there's no customerId (an old
+  // link, or a restaurant-info-only view), we fall back to tracking just
+  // the single order from the URL, same as before.
+  const [orders, setOrders] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [justCompletedOrder, setJustCompletedOrder] = useState(null);
 
   useEffect(() => {
-    fetchOrderStatus();
-
-    // Poll for updates every 5 seconds
-    const interval = setInterval(fetchOrderStatus, 5000);
+    fetchOrders(true);
+    const interval = setInterval(() => fetchOrders(false), 5000);
     return () => clearInterval(interval);
-  }, [orderId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, customerId]);
 
-  // Watch for order completion → move to history + show Thank You modal
-  useEffect(() => {
-    if (order && order.orderStatus === 'completed' && !showThankYou) {
-      // Move order to history + clear currentOrderId on the server.
-      // Pass orderId in body as primary source (fixes first-order-in-history bug).
-      if (customerId && customerId !== 'null') {
-        api.post(`/customer/${customerId}/complete-order`, { orderId })
-          .then(() => {
-            // Clean up any old localStorage keys just in case
-            if (uniqueCode) localStorage.removeItem(`currentOrder_${uniqueCode}`);
-          })
-          .catch(console.error);
-      }
-      setShowThankYou(true);
-    }
-  }, [order]);
-
-  const fetchOrderStatus = async () => {
+  const fetchOrders = async (isFirstLoad) => {
     try {
-      const response = await api.get(`/order-status/${orderId}`);
-      setOrder(response.data.order);
+      if (hasCustomerId) {
+        const res = await api.get(`/customer/${customerId}/active-orders`);
+        const list = res.data.orders || [];
+
+        // On first load, open on whichever order brought us here (usually
+        // the one just placed). If it's not in the list anymore (already
+        // completed, or a stale link), default to the most recent one.
+        if (isFirstLoad) {
+          const idx = list.findIndex(o => o.id === orderId);
+          setSelectedIndex(idx >= 0 ? idx : 0);
+        } else {
+          // Keep the customer looking at the SAME order across a refresh,
+          // even if its position in the (newest-first) list has shifted —
+          // never yank them to a different order mid-read.
+          setOrders(prevOrders => {
+            const currentlyViewedId = prevOrders[selectedIndex]?.id;
+            const newIdx = list.findIndex(o => o.id === currentlyViewedId);
+            if (currentlyViewedId && newIdx === -1) {
+              // The order being viewed just left the active list — it was
+              // completed. Show the Thank You modal for THAT order, then
+              // drop back to whatever's left (or the empty state).
+              const finished = prevOrders[selectedIndex];
+              if (finished) {
+                setJustCompletedOrder(finished);
+                setShowThankYou(true);
+                // File it into order history immediately rather than waiting
+                // for Past Orders to be opened (the backend also self-heals
+                // this lazily, so this call is a redundancy, not a dependency).
+                api.post(`/customer/${customerId}/complete-order`, { orderId: finished.id })
+                  .catch(console.error);
+              }
+              setSelectedIndex(0);
+            } else if (newIdx >= 0) {
+              setSelectedIndex(newIdx);
+            }
+            return prevOrders; // orders itself is set right after, see below
+          });
+        }
+        setOrders(list);
+      } else {
+        // No customerId available — fall back to single-order tracking,
+        // exactly as this page always worked before.
+        const res = await api.get(`/order-status/${orderId}`);
+        setOrders(res.data.order ? [res.data.order] : []);
+        setSelectedIndex(0);
+      }
     } catch (error) {
       console.error('Error fetching order status:', error);
     } finally {
@@ -52,22 +85,23 @@ export default function OrderStatus() {
     }
   };
 
+  const order = orders[selectedIndex] || null;
+
+  const handleThankYouClose = () => {
+    setShowThankYou(false);
+    setJustCompletedOrder(null);
+  };
+
   const getStatusStep = (status) => {
-    const steps = {
-      received: 1,
-      preparing: 2,
-      ready: 3,
-      completed: 4
-    };
+    const steps = { received: 1, preparing: 2, ready: 3, completed: 4 };
     return steps[status] || 1;
   };
 
-  // Go back to the menu/cart page
   const handleBackToMenu = () => {
     if (uniqueCode) {
       navigate(`/menu/${uniqueCode}`);
     } else {
-      navigate(-1); // fallback: browser back
+      navigate(-1);
     }
   };
 
@@ -79,15 +113,37 @@ export default function OrderStatus() {
     );
   }
 
-  if (!order) {
+  // Nothing active left to track — every order this customer placed has
+  // either been completed (and is now in Past Orders) or never existed.
+  if (orders.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="card text-center">
-          <p className="text-gray-600 mb-4">Order not found</p>
-          <Link to="/" className="btn-primary">
-            Go Home
-          </Link>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-3xl mx-auto px-4">
+          <button
+            onClick={handleBackToMenu}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium mb-5 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Menu
+          </button>
+
+          <div className="card text-center py-16">
+            <ShoppingBag className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-700 font-semibold text-lg mb-1">No active orders</p>
+            <p className="text-gray-500 text-sm mb-6">
+              Completed orders move to Past Orders automatically.
+            </p>
+            <Link to={uniqueCode ? `/menu/${uniqueCode}` : '/'} className="btn-primary">
+              Browse Menu
+            </Link>
+          </div>
         </div>
+
+        <ThankYouModal
+          show={showThankYou}
+          uniqueCode={uniqueCode}
+          onClose={handleThankYouClose}
+        />
       </div>
     );
   }
@@ -98,7 +154,6 @@ export default function OrderStatus() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4">
 
-        {/* ← Back to Menu button */}
         <button
           onClick={handleBackToMenu}
           className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium mb-5 transition-colors"
@@ -107,15 +162,35 @@ export default function OrderStatus() {
           Back to Menu
         </button>
 
+        {/* Order-switcher — one page per active order, most recent first.
+            Only shows once there's more than one order to switch between. */}
+        {orders.length > 1 && (
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+            <span className="text-xs font-medium text-gray-500 flex-shrink-0 mr-1">
+              Your orders:
+            </span>
+            {orders.map((o, i) => (
+              <button
+                key={o.id}
+                onClick={() => setSelectedIndex(i)}
+                title={`Order #${o.id.slice(-8).toUpperCase()}`}
+                className={`flex-shrink-0 min-w-[2.25rem] h-9 px-2 rounded-lg text-sm font-semibold transition-colors ${
+                  i === selectedIndex
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Header */}
         <div className="card mb-6">
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              {order.orderStatus === 'completed' ? (
-                <div className="bg-green-500 rounded-full p-4">
-                  <CheckCircle className="h-16 w-16 text-white" />
-                </div>
-              ) : order.isReady ? (
+              {order.orderStatus === 'completed' || order.isReady ? (
                 <div className="bg-green-500 rounded-full p-4">
                   <CheckCircle className="h-16 w-16 text-white" />
                 </div>
@@ -136,6 +211,9 @@ export default function OrderStatus() {
 
             <p className="text-gray-600 mb-4">
               Order #{order.id.slice(-8).toUpperCase()}
+              {orders.length > 1 && (
+                <span className="text-gray-400"> · {selectedIndex + 1} of {orders.length}</span>
+              )}
             </p>
 
             {order.isReady && order.orderStatus !== 'completed' && (
@@ -147,7 +225,7 @@ export default function OrderStatus() {
             )}
 
             <button
-              onClick={fetchOrderStatus}
+              onClick={() => fetchOrders(false)}
               className="btn-secondary flex items-center gap-2 mx-auto"
             >
               <RefreshCw className="h-4 w-4" />
@@ -161,17 +239,11 @@ export default function OrderStatus() {
           <h2 className="font-semibold text-lg mb-6">Order Status</h2>
 
           <div className="space-y-6">
-
-            {/* Received */}
             <div className="flex items-start gap-4">
               <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                 currentStep >= 1 ? 'bg-blue-500' : 'bg-gray-300'
               }`}>
-                {currentStep >= 1 ? (
-                  <CheckCircle className="h-6 w-6 text-white" />
-                ) : (
-                  <span className="text-white font-bold">1</span>
-                )}
+                {currentStep >= 1 ? <CheckCircle className="h-6 w-6 text-white" /> : <span className="text-white font-bold">1</span>}
               </div>
               <div className="flex-1 pt-1">
                 <h3 className="font-semibold">Order Received</h3>
@@ -179,19 +251,13 @@ export default function OrderStatus() {
               </div>
             </div>
 
-            {/* Connector line */}
             <div className="ml-5 w-0.5 h-4 bg-gray-200 -mt-2"></div>
 
-            {/* Preparing */}
             <div className="flex items-start gap-4">
               <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                 currentStep >= 2 ? 'bg-yellow-500' : 'bg-gray-300'
               }`}>
-                {currentStep >= 2 ? (
-                  <Package className="h-6 w-6 text-white" />
-                ) : (
-                  <span className="text-white font-bold">2</span>
-                )}
+                {currentStep >= 2 ? <Package className="h-6 w-6 text-white" /> : <span className="text-white font-bold">2</span>}
               </div>
               <div className="flex-1 pt-1">
                 <h3 className="font-semibold">Preparing</h3>
@@ -199,19 +265,13 @@ export default function OrderStatus() {
               </div>
             </div>
 
-            {/* Connector line */}
             <div className="ml-5 w-0.5 h-4 bg-gray-200 -mt-2"></div>
 
-            {/* Ready */}
             <div className="flex items-start gap-4">
               <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                 currentStep >= 3 ? 'bg-green-500' : 'bg-gray-300'
               }`}>
-                {currentStep >= 3 ? (
-                  <CheckCircle className="h-6 w-6 text-white" />
-                ) : (
-                  <span className="text-white font-bold">3</span>
-                )}
+                {currentStep >= 3 ? <CheckCircle className="h-6 w-6 text-white" /> : <span className="text-white font-bold">3</span>}
               </div>
               <div className="flex-1 pt-1">
                 <h3 className="font-semibold">Ready for Pickup</h3>
@@ -219,33 +279,25 @@ export default function OrderStatus() {
               </div>
             </div>
 
-            {/* Connector line */}
             <div className="ml-5 w-0.5 h-4 bg-gray-200 -mt-2"></div>
 
-            {/* Completed */}
             <div className="flex items-start gap-4">
               <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                 currentStep >= 4 ? 'bg-purple-500' : 'bg-gray-300'
               }`}>
-                {currentStep >= 4 ? (
-                  <CheckCircle className="h-6 w-6 text-white" />
-                ) : (
-                  <span className="text-white font-bold">4</span>
-                )}
+                {currentStep >= 4 ? <CheckCircle className="h-6 w-6 text-white" /> : <span className="text-white font-bold">4</span>}
               </div>
               <div className="flex-1 pt-1">
                 <h3 className="font-semibold">Completed</h3>
                 <p className="text-sm text-gray-600">Order delivered and completed</p>
               </div>
             </div>
-
           </div>
         </div>
 
         {/* Order Details */}
         <div className="card mb-6">
           <h2 className="font-semibold text-lg mb-4">Order Details</h2>
-
           <div className="space-y-3">
             {order.items.map((item, index) => (
               <div key={index} className="flex justify-between items-center py-2 border-b last:border-b-0">
@@ -256,7 +308,6 @@ export default function OrderStatus() {
                 <p className="font-semibold">₹{(item.price * item.quantity).toFixed(2)}</p>
               </div>
             ))}
-
             <div className="flex justify-between items-center pt-3 border-t-2">
               <span className="text-lg font-bold">Total</span>
               <span className="text-2xl font-bold text-blue-600">₹{order.totalAmount.toFixed(2)}</span>
@@ -273,19 +324,14 @@ export default function OrderStatus() {
             </h2>
             <div className="space-y-2 text-sm">
               <p><strong>Name:</strong> {order.restaurant.name}</p>
-              {order.restaurant.phone && (
-                <p><strong>Phone:</strong> {order.restaurant.phone}</p>
-              )}
+              {order.restaurant.phone && <p><strong>Phone:</strong> {order.restaurant.phone}</p>}
               {order.restaurant.address && (
-                <p>
-                  <strong>Address:</strong> {order.restaurant.address.street}, {order.restaurant.address.city}
-                </p>
+                <p><strong>Address:</strong> {order.restaurant.address.street}, {order.restaurant.address.city}</p>
               )}
             </div>
           </div>
         )}
 
-        {/* Back to Menu - bottom button (easier to reach on mobile) */}
         <button
           onClick={handleBackToMenu}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 transition-colors mb-8"
@@ -293,16 +339,13 @@ export default function OrderStatus() {
           <ArrowLeft className="h-4 w-4" />
           Back to Menu &amp; Cart
         </button>
-
       </div>
 
-      {/* Thank You Modal — appears when order is completed */}
       <ThankYouModal
         show={showThankYou}
         uniqueCode={uniqueCode}
-        onClose={() => setShowThankYou(false)}
+        onClose={handleThankYouClose}
       />
-
     </div>
   );
 }
