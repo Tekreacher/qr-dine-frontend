@@ -3,7 +3,7 @@ import { User, History, FileText, ChevronDown, Clock, AlertCircle, ExternalLink,
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
-export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, activeOrderCount = 0, uniqueCode, onLogout }) {
+export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, activeOrderCount = 0, uniqueCode, onLogout, onOpen }) {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
@@ -54,7 +54,14 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
   return (
     <div className="relative" id="customer-profile-dropdown">
       <button
-        onClick={() => setShowMenu(!showMenu)}
+        onClick={() => {
+          const opening = !showMenu;
+          setShowMenu(opening);
+          // Fetch the true current count right as the dropdown opens, so
+          // what the customer sees the instant they look never depends on
+          // where the background 10s poll happens to be.
+          if (opening && onOpen) onOpen();
+        }}
         className="flex items-center gap-1.5 p-2 pr-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-md"
         title="Your Profile"
       >

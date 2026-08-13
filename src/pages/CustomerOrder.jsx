@@ -468,6 +468,9 @@ export default function CustomerOrder() {
             orderId: response.data.order._id
           });
         }
+        // Update the profile dropdown's active-order count RIGHT NOW instead
+        // of waiting for the next background poll (up to 10s away).
+        refreshProfile();
       }
 
       // No Razorpay order came back — tell the customer WHY, and still let
@@ -530,6 +533,8 @@ export default function CustomerOrder() {
               });
             } catch (e) { /* server-side already handled it */ }
           }
+          // Same instant refresh as the cash path above.
+          refreshProfile();
 
           navigate(
             `/order-status/${orderData.order._id}?customerId=${custId}&uniqueCode=${uniqueCode}`
@@ -830,6 +835,7 @@ export default function CustomerOrder() {
               activeOrderCount={activeOrderCount}
               uniqueCode={uniqueCode}
               onLogout={handleLogout}
+              onOpen={refreshProfile}
             />
             <button
               onClick={() => setShowCart(!showCart)}
