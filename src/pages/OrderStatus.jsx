@@ -41,36 +41,48 @@ export default function OrderStatus() {
         // completed, or a stale link), default to the most recent one.
         if (isFirstLoad) {
           const idx = list.findIndex(o => o.id === orderId);
+          setOrders(list);
           setSelectedIndex(idx >= 0 ? idx : 0);
         } else {
-          // Keep the customer looking at the SAME order across a refresh,
-          // even if its position in the (newest-first) list has shifted —
-          // never yank them to a different order mid-read.
+          // IMPORTANT: this poll runs on a 5-second interval that was set up
+          // once, on mount. A plain closure read of `selectedIndex` here
+          // would be FROZEN at whatever it was at that moment — so if the
+          // customer later clicked to a different page, every subsequent
+          // poll would silently keep tracking the wrong order. Nesting
+          // functional updaters (setOrders(prev => ...), setSelectedIndex
+          // (prev => ...)) forces React to hand us the true CURRENT value
+          // every time, regardless of when this closure was created.
           setOrders(prevOrders => {
-            const currentlyViewedId = prevOrders[selectedIndex]?.id;
-            const newIdx = list.findIndex(o => o.id === currentlyViewedId);
-            if (currentlyViewedId && newIdx === -1) {
-              // The order being viewed just left the active list — it was
-              // completed. Show the Thank You modal for THAT order, then
-              // drop back to whatever's left (or the empty state).
-              const finished = prevOrders[selectedIndex];
-              if (finished) {
-                setJustCompletedOrder(finished);
-                setShowThankYou(true);
-                // File it into order history immediately rather than waiting
-                // for Past Orders to be opened (the backend also self-heals
-                // this lazily, so this call is a redundancy, not a dependency).
-                api.post(`/customer/${customerId}/complete-order`, { orderId: finished.id })
-                  .catch(console.error);
+            setSelectedIndex(prevSelectedIndex => {
+              const currentlyViewedId = prevOrders[prevSelectedIndex]?.id;
+              const newIdx = list.findIndex(o => o.id === currentlyViewedId);
+
+              if (currentlyViewedId && newIdx === -1) {
+                // The order actually being viewed just left the active
+                // list — it was completed. Show the Thank You modal for
+                // THAT specific order, then land on the first of whatever
+                // remains (or the empty state).
+                const finished = prevOrders[prevSelectedIndex];
+                if (finished) {
+                  setJustCompletedOrder(finished);
+                  setShowThankYou(true);
+                  // File it into history immediately rather than waiting for
+                  // Past Orders to be opened (the backend also self-heals
+                  // this lazily, so this call is a redundancy, not a
+                  // dependency).
+                  api.post(`/customer/${customerId}/complete-order`, { orderId: finished.id })
+                    .catch(console.error);
+                }
+                return 0;
               }
-              setSelectedIndex(0);
-            } else if (newIdx >= 0) {
-              setSelectedIndex(newIdx);
-            }
-            return prevOrders; // orders itself is set right after, see below
+
+              // Still around — just keep pointing at the SAME order even if
+              // the list re-sorted and it's now at a different position.
+              return newIdx >= 0 ? newIdx : 0;
+            });
+            return list; // now actually apply the fresh list
           });
         }
-        setOrders(list);
       } else {
         // No customerId available — fall back to single-order tracking,
         // exactly as this page always worked before.
