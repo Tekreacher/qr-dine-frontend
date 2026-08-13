@@ -596,7 +596,12 @@ export default function CustomerOrder() {
         /* Nothing inside the ordering page may exceed its container. This is
            a structural guarantee rather than a clip: elements shrink instead
            of pushing the page sideways. */
-        .qrd-root * { max-width: 100%; }
+        /* NOTE: a blanket ".qrd-root * { max-width:100% }" used to live here.
+           It squashed the profile dropdown (an absolutely-positioned overlay
+           whose containing block is its small trigger button, not the page)
+           down to ~44px wide. The real overflow causes were the missing
+           min-w-0 on grid/flex containers and negative margins, both already
+           fixed elsewhere in this file — so this blanket rule is removed. */
         .qrd-root img, .qrd-root svg { height: auto; }
 
         .qrd-title {

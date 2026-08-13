@@ -169,7 +169,7 @@ export default function Analytics() {
   return (
     <div className="space-y-6">
       {/* Month Stats Header */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="card">
           <div className="flex items-center gap-3">
             <div className="bg-blue-100 p-3 rounded-lg"><ShoppingBag className="h-6 w-6 text-blue-600" /></div>
