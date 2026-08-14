@@ -11,7 +11,7 @@ export default function AdminPanel() {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
-  const adminToken = localStorage.getItem('adminToken');
+  const adminToken = sessionStorage.getItem('adminToken');
 
   useEffect(() => {
     if (!adminToken) { navigate('/admin'); return; }
@@ -78,8 +78,8 @@ export default function AdminPanel() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
+    sessionStorage.removeItem('adminToken');
+    sessionStorage.removeItem('adminUser');
     navigate('/admin');
   };
 

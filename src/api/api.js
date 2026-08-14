@@ -21,12 +21,12 @@ api.interceptors.request.use(
       url.includes('/admin/reset-password');
 
     if (isSuperAdminRoute) {
-      const adminToken = localStorage.getItem('adminToken');
+      const adminToken = sessionStorage.getItem('adminToken');
       if (adminToken) {
         config.headers.Authorization = `Bearer ${adminToken}`;
       }
     } else {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -57,8 +57,8 @@ api.interceptors.response.use(
         error.config?.url?.includes('/admin/reset-password');
 
       if (!isAuthPage && !isLoginRequest) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         window.location.href = '/login';
       }
     }

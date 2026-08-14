@@ -17,8 +17,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const token = sessionStorage.getItem('token');
+    const userData = sessionStorage.getItem('user');
     
     if (token && userData) {
       setUser(JSON.parse(userData));
@@ -33,8 +33,8 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/login', { email, password });
       const { token, restaurant } = response.data;
       
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(restaurant));
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(restaurant));
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       setUser(restaurant);
@@ -50,8 +50,8 @@ export const AuthProvider = ({ children }) => {
   // signup is handled directly in Signup.jsx — no token returned until admin approves
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
   };

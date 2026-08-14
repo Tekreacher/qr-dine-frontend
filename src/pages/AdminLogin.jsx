@@ -16,8 +16,8 @@ export default function AdminLogin() {
     setError('');
     try {
       const res = await api.post('/admin/login', { email, password });
-      localStorage.setItem('adminToken', res.data.token);
-      localStorage.setItem('adminUser', JSON.stringify(res.data.admin));
+      sessionStorage.setItem('adminToken', res.data.token);
+      sessionStorage.setItem('adminUser', JSON.stringify(res.data.admin));
       navigate('/admin/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials');
