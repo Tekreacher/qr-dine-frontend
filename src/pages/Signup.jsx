@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { QrCode, Store, Mail, Lock, Phone, MapPin, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { QrCode, Store, Mail, Lock, Phone, MapPin, AlertCircle, CheckCircle, Clock, Eye, EyeOff } from 'lucide-react';
 import api from '../api/api';
 
 export default function Signup() {
@@ -11,6 +11,8 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -189,13 +191,41 @@ export default function Signup() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
-                  <input type="password" name="password" value={formData.password} onChange={handleChange}
-                    className="input-field" placeholder="••••••••" required />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password" value={formData.password} onChange={handleChange}
+                      className="input-field pr-10" placeholder="••••••••" required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
-                  <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
-                    className="input-field" placeholder="••••••••" required />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
+                      className="input-field pr-10" placeholder="••••••••" required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
