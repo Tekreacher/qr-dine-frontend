@@ -12,6 +12,8 @@ import Orders from './pages/Orders';
 import AdminLogin from './pages/AdminLogin';
 import AdminPanel from './pages/AdminPanel';
 import AdminSetup from './pages/AdminSetup';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 
 function App() {
   return (
@@ -31,6 +33,8 @@ function App() {
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/setup" element={<AdminSetup />} />
           <Route path="/admin/dashboard" element={<AdminPanel />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
         </Routes>
       </AuthProvider>
     </Router>

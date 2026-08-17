@@ -360,6 +360,20 @@ export default function CustomerOrder() {
     setShowPhoneLookup(true);
   };
 
+  const handleDeleteData = async () => {
+    if (!customerId) return;
+    try {
+      await api.delete(`/customer/${customerId}`);
+    } catch (error) {
+      console.error('Error deleting customer data:', error);
+      alert('Something went wrong deleting your data. Please try again.');
+      return;
+    }
+    // Same cleanup as logout — the profile is gone server-side now too.
+    handleLogout();
+    alert('Your data has been deleted from this restaurant.');
+  };
+
   const addToCart = (item) => {
     const existingItem = cart.find(cartItem => cartItem._id === item._id);
     if (existingItem) {
@@ -835,6 +849,7 @@ export default function CustomerOrder() {
               activeOrderCount={activeOrderCount}
               uniqueCode={uniqueCode}
               onLogout={handleLogout}
+              onDeleteData={handleDeleteData}
               onOpen={refreshProfile}
             />
             <button

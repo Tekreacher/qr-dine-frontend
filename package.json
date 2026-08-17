@@ -9,6 +9,7 @@
   "preview": "vite preview"
  },
  "dependencies": {
+  "@sentry/react": "^10.70.0",
   "axios": "^1.6.5",
   "lucide-react": "^0.303.0",
   "mongodb": "^7.2.0",

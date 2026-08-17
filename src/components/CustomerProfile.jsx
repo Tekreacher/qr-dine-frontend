@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { User, History, FileText, ChevronDown, Clock, AlertCircle, ExternalLink, LogOut } from 'lucide-react';
+import { User, History, FileText, ChevronDown, Clock, AlertCircle, ExternalLink, LogOut, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
-export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, activeOrderCount = 0, uniqueCode, onLogout, onOpen }) {
+export default function CustomerProfile({ customerId, customerName, isExistingCustomer, currentOrderId, activeOrderCount = 0, uniqueCode, onLogout, onOpen, onDeleteData }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,6 +17,10 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
     };
     if (showMenu) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
+  useEffect(() => {
+    if (!showMenu) setConfirmDelete(false);
   }, [showMenu]);
 
   const handleCheckOrderStatus = () => {
@@ -48,6 +54,19 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
     if (window.confirm(message)) {
       setShowMenu(false);
       if (onLogout) onLogout();
+    }
+  };
+
+  const handleDeleteData = async () => {
+    if (!customerId || !onDeleteData) return;
+    setDeleting(true);
+    try {
+      await onDeleteData();
+      // onDeleteData handles clearing local state/session — just close up here.
+      setConfirmDelete(false);
+      setShowMenu(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -161,6 +180,56 @@ export default function CustomerProfile({ customerId, customerName, isExistingCu
                     </p>
                   </div>
                 </button>
+              </>
+            )}
+
+            {/* Delete My Data — separate from Logout on purpose: this is
+                permanent and removes your profile + strips your name/phone
+                off past orders at this restaurant, rather than just signing
+                you out of this device. */}
+            {customerId && onDeleteData && (
+              <>
+                <div className="border-t border-gray-100 my-2"></div>
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-50 rounded-lg text-left transition-colors group"
+                  >
+                    <div className="bg-red-100 p-2.5 rounded-lg group-hover:bg-red-200 transition-colors flex-shrink-0">
+                      <Trash2 className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-red-700">Delete My Data</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Permanently remove your profile from this restaurant
+                      </p>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="mx-2 my-1 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium mb-1">Delete everything?</p>
+                    <p className="text-xs text-red-700 mb-3">
+                      This removes your saved profile and your name/phone from your past orders here.
+                      It can't be undone, and it only affects this one restaurant.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleDeleteData}
+                        disabled={deleting}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-50"
+                      >
+                        {deleting ? 'Deleting...' : 'Yes, delete it'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        disabled={deleting}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2 rounded-lg disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

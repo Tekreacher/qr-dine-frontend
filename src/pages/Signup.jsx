@@ -13,6 +13,7 @@ export default function Signup() {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -26,6 +27,10 @@ export default function Signup() {
     }
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      return;
+    }
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy to continue.');
       return;
     }
 
@@ -236,6 +241,21 @@ export default function Signup() {
                 You will be able to login once your account is approved.
               </p>
             </div>
+
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={e => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                I agree to the{' '}
+                <Link to="/terms" target="_blank" className="text-blue-600 hover:underline">Terms of Service</Link>
+                {' '}and{' '}
+                <Link to="/privacy" target="_blank" className="text-blue-600 hover:underline">Privacy Policy</Link>.
+              </span>
+            </label>
 
             <button type="submit" disabled={loading} className="w-full btn-primary py-3 text-lg disabled:opacity-50">
               {loading ? 'Submitting Registration...' : 'Submit Registration'}

@@ -47,6 +47,10 @@ export default function Layout({ children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-center text-gray-600 text-sm">
             &copy; 2025 QR Dine. All rights reserved.
+            {' · '}
+            <a href="/terms" className="hover:text-blue-600">Terms</a>
+            {' · '}
+            <a href="/privacy" className="hover:text-blue-600">Privacy</a>
           </p>
         </div>
       </footer>
