@@ -106,7 +106,7 @@ export default function Privacy() {
             </p>
             <ul className="list-disc pl-6 text-gray-700 space-y-1.5">
               <li><strong>Customers:</strong> open your profile menu on any restaurant's ordering page and choose <em>Delete My Data</em> — this removes your saved profile and strips your name/phone from your past orders at that restaurant immediately. Order records themselves are kept (with your identifying details removed) for the restaurant's accounting, as most privacy laws, including India's Digital Personal Data Protection Act, 2023, allow.</li>
-              <li><strong>Restaurants:</strong> to close your account and request deletion of your restaurant data, contact us at <strong>[your contact email]</strong>.</li>
+              <li><strong>Restaurants:</strong> to close your account and request deletion of your restaurant data, contact us at <strong>prathameshkhole8@gmail.com</strong>.</li>
             </ul>
           </section>
 
@@ -139,7 +139,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">10. Contact</h2>
             <p className="text-gray-700 leading-relaxed">
-              Questions about this Policy, or a data request, can be sent to <strong>[your contact email]</strong>.
+              Questions about this Policy, or a data request, can be sent to <strong>prathameshkhole8@gmail.com</strong>.
             </p>
           </section>
 
